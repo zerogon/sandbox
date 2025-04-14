@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{commons/layout}">
+
+<div layout:fragment="content">
+	<div class="w3-content w3-padding">
+		<div class="w3-card-4 w3-white">
+			<div class="w3-container w3-padding w3-light-gray">
+				<h4 style="display: inline">
+					<b>회원</b>등록
+				</h4>
+			</div>
+			<div class="w3-container">
+				<form action="/members/new" method="post">
+					<div class="w3-container" >
+						<p><label>이 름 :</label>
+		 					<input class="w3-input w3-border" name="name" type="text"
+		 				     placeholder="이름을 입력하세요">
+		 				</p>
+		 				
+						<p><label>이 메 일:</label>
+							<input class="w3-input w3-border" name="email" type="text"
+							placeholder="이메일을 입력하세요"
+						></p>
+					</div>
+					<p>					
+					<button class="w3-button w3-teal" type="submit">등록</button>
+					</p>
+				</form>
+
+			</div>
+		</div>
+	</div>
+</div>

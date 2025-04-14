@@ -6,15 +6,22 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
 
 @Entity
 public class Member {
+	
 	@Id @GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 	private String name;
 	private String email;
 	private LocalDate regdate;
-
+	
+    @PrePersist
+    protected void onCreate() {
+        this.regdate = LocalDate.now();
+    }
+    
 	public String getEmail() {
 		return email;
 	}
