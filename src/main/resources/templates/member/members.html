@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+	xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+	layout:decorate="~{commons/layout}">
+
+<div layout:fragment="content">
+	<div class="w3-content w3-padding">
+		<div class="w3-card-4 w3-white">
+			<div class="w3-container w3-padding w3-light-gray">
+				<h4 style="display: inline">
+					<b>회원</b>목록
+				</h4>
+			</div>
+			<div class="w3-container">
+				<table>
+					<tr>
+						<th class="w3-center">No.</th>
+						<th class="w3-center">회원명</th>
+						<th class="w3-center">이메일</th>
+						<th class="w3-center">등록일</th>
+					</tr>
+
+					<tr th:each="member, iterStat : ${members}">
+						<td class="w3-border w3-center" width="100px"
+							th:text="${iterStat.index + 1}"></td>
+						<td class="w3-border w3-center" width="500px"
+							th:text="${member.name}">이름</td>
+						<td class="w3-border w3-center" width="500px"
+							th:text="${member.email}">이메일</td>
+						<td class="w3-border w3-center" width="300px"
+							th:text="${member.regdate}">등록일</td>
+					</tr>
+				</table>
+				<div class="w3-bar w3-center">
+					<span th:if="${members.hasPrevious()}"> <a
+						th:href="@{/members(page=${members.number - 1})}"
+						class="w3-button w3-border">«</a>
+					</span> <span
+						th:each="pageNum : ${#numbers.sequence(0, members.totalPages - 1)}">
+						<a th:href="@{/members(page=${pageNum})}" th:text="${pageNum + 1}"
+						th:class="${pageNum == members.number} ? 'w3-button w3-black' : 'w3-button w3-border'"></a>
+					</span> <span th:if="${members.hasNext()}"> <a
+						th:href="@{/members(page=${members.number + 1})}"
+						class="w3-button w3-border">»</a>
+					</span>
+				</div>
+
+
+			</div>
+		</div>
+	</div>
+</div>
