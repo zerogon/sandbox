@@ -8,6 +8,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import jakarta.transaction.Transactional;
 import lab.zerogon.sandbox.domain.Member;
 import lab.zerogon.sandbox.repository.MemberRepository;
 
@@ -43,4 +44,14 @@ public class MemberService {
 		return memberRepository.findById(memberId);
 
 	}
+	
+	@Transactional
+	public void updateMember(Long id, Member formMember) {
+		Optional<Member> member = memberRepository.findById(id);
+
+	    member.get().setName(formMember.getName());
+	    member.get().setEmail(formMember.getEmail());
+	}
+
+	
 }

@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<div class="w3-card-4 w3-white ">
+    <div class="w3-container w3-light-gray">
+      <h4>정보수정</h4>
+    </div> 
+      <form th:action="@{/members/{id}(id=${member.id})}" method="post" class="w3-container">
+      	<input type="hidden" name="_method" value="put"/>
+      <p>
+      <label>이 름 :</label>
+      <div class="w3-padding"> 
+      	<input class="w3-input w3-border" type="text" name="name" 
+      		th:value="${member.name}">
+      </div>
+      <p>
+      <p>
+      <label>이 메 일 :</label>
+      <div class="w3-padding"> 
+      	<input class="w3-input w3-border" type="text" name="email" 
+      		th:value="${member.email}">
+      </div>
+      <p>
+      
+      <div class="w3-right">
+      	<button type="submit" class="w3-button w3-blue">수정</button>
+      	<button class="w3-button w3-red">삭제</button>
+      	<button type ="button" class="w3-button w3-black" onclick="$('#memberDetail').hide()">닫기</button>
+        <p>
+      </div>
+      
+    </form>
+  </div>

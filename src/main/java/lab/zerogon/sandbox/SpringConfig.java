@@ -2,6 +2,7 @@ package lab.zerogon.sandbox;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.web.filter.HiddenHttpMethodFilter;
 
 import lab.zerogon.sandbox.repository.MemberRepository;
 import lab.zerogon.sandbox.repository.MemoryMemberRepository;
@@ -19,6 +20,11 @@ public class SpringConfig {
 	public MemberService memberService() {
 		return new MemberService(memberRepository);
 	}
+	@Bean
+	public HiddenHttpMethodFilter hiddenHttpMethodFilter() {
+	    return new HiddenHttpMethodFilter();
+	}
+
 /*
 	@Bean
 	public MemberRepository memberRepository() {
