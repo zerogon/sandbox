@@ -8,6 +8,9 @@ import org.springframework.data.domain.Pageable;
 import lab.zerogon.sandbox.domain.Member;
 
 /**
+ * 현재 안쓰는 코드
+ * 여러개의 구현체 테스트
+ * 
  * 동시성 문제가 고려되어 있지 않음, 실무에서는 ConcurrentHashMap, AtomicLong 사용 고려 
  * 
  * implements MemberRepository 

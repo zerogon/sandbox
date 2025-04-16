@@ -30,27 +30,28 @@
 						<td class="w3-border w3-center" width="500px"
 							th:text="${member.email}">이메일</td>
 						<td class="w3-border w3-center" width="300px"
-							th:text="${member.regdate}">등록일</td>
+							th:text="${#temporals.format(member.regdate, 'yyyy-MM-dd HH:mm:ss')}">등록일</td>
+							
 					</tr>
 				</table>
 				
 				<!-- paging -->
 				<div class="w3-bar w3-center">
-					<span th:if="${members.hasPrevious()}"> 
-						<a th:href="@{/members(page=${members.number - 1})}" 
-						class="w3-button w3-border">«</a>
-					</span> 
-					
-					<span th:each="pageNum : ${#numbers.sequence(0, members.totalPages - 1)}">
-						<a th:href="@{/members(page=${pageNum})}" th:text="${pageNum + 1}"
-						th:class="${pageNum == members.number} ? 'w3-button w3-black' : 'w3-button w3-border'"></a>
-					</span> 
-					
-					<span th:if="${members.hasNext()}"> 
-						<a th:href="@{/members(page=${members.number + 1})}"
-						class="w3-button w3-border">»</a>
-					</span>
+				    <span th:if="${members.hasPrevious()}">
+				        <a th:href="@{/members(page=${members.number - 1})}" class="w3-button w3-border">«</a>
+				    </span>
+				
+				    <span th:each="pageNum : ${#numbers.sequence(0, members.totalPages - 1)}">
+				        <a th:href="@{/members(page=${pageNum})}" th:text="${pageNum + 1}"
+				            th:class="${pageNum == members.number} ? 'w3-button w3-black' : 'w3-button w3-border'"></a>
+				    </span>
+				
+				    <span th:if="${members.hasNext()}">
+				        <a th:href="@{/members(page=${members.number + 1})}" class="w3-button w3-border">»</a>
+				    </span>
 				</div>
+
+
 				<!-- 페이지 모달 -->
 				<div id="memberDetail" class="w3-modal"
 					style="background-color: rgba(0, 0, 0, 0.0); padding: 5px; width: 720px; margin-left: 27%">

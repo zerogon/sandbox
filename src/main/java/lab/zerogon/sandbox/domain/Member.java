@@ -1,6 +1,6 @@
 package lab.zerogon.sandbox.domain;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -15,11 +15,11 @@ public class Member {
 	private Long id;
 	private String name;
 	private String email;
-	private LocalDate regdate;
+	private LocalDateTime regdate;
 	
     @PrePersist
     protected void onCreate() {
-        this.regdate = LocalDate.now();
+        this.regdate = LocalDateTime.now();
     }
     
 	public String getEmail() {
@@ -30,11 +30,11 @@ public class Member {
 		this.email = email;
 	}
 
-	public LocalDate getRegdate() {
+	public LocalDateTime getRegdate() {
 		return regdate;
 	}
 
-	public void setRegdate(LocalDate regdate) {
+	public void setRegdate(LocalDateTime regdate) {
 		this.regdate = regdate;
 	}
 

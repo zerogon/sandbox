@@ -24,8 +24,11 @@
       
       <div class="w3-right">
       	<button type="submit" class="w3-button w3-blue">수정</button>
-      	<button class="w3-button w3-red">삭제</button>
-      	<button type ="button" class="w3-button w3-black" onclick="$('#memberDetail').hide()">닫기</button>
+      	<button type="button"
+	        class="w3-button w3-red"
+	        th:onclick="|handleDelete('/members/${member.id}')|">삭제</button>
+
+		<button type ="button" class="w3-button w3-black" onclick="$('#memberDetail').hide()">닫기</button>
         <p>
       </div>
       

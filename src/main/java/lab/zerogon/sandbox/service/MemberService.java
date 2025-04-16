@@ -52,6 +52,10 @@ public class MemberService {
 	    member.get().setName(formMember.getName());
 	    member.get().setEmail(formMember.getEmail());
 	}
-
+	
+    public void deleteMember(Long id) {
+        memberRepository.deleteById(id);
+    }
+	
 	
 }
