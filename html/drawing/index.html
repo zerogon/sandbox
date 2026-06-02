@@ -590,14 +590,15 @@ function draw(){
     const n=STATE.groups[gk].sabuns.size;
     if(n>0 && n<=r.quota) oneToOneSlots.push({slot:r.slot,n});
   });
-  // 1:1 슬롯에 속한 사번별 신청건수(전체 명단 기준 복수신청)
-  const appCntBySabun={};
-  STATE.apps.forEach(a=>{appCntBySabun[a.sabun]=(appCntBySabun[a.sabun]||0)+1;});
-  const oneToOneSabuns=new Set();
-  oneToOneSlots.forEach(o=>{const gk=STATE.matchMap[o.slot.id];STATE.groups[gk].sabuns.forEach(s=>oneToOneSabuns.add(s));});
-  const mailTargets=[...oneToOneSabuns].filter(s=>appCntBySabun[s]>=2)
+  // 1:1 객실에만 한정한 사번별 신청건수 (경쟁 객실 신청은 제외)
+  // 한 그룹이 여러 슬롯에 연결될 수 있으므로 슬롯이 아닌 그룹 단위로 dedupe
+  const oneToOneGroupKeys=new Set();
+  oneToOneSlots.forEach(o=>{const gk=STATE.matchMap[o.slot.id];if(gk)oneToOneGroupKeys.add(gk);});
+  const oneToOneCntBySabun={};
+  oneToOneGroupKeys.forEach(gk=>{STATE.groups[gk].sabuns.forEach(s=>{oneToOneCntBySabun[s]=(oneToOneCntBySabun[s]||0)+1;});});
+  const mailTargets=Object.keys(oneToOneCntBySabun).filter(s=>oneToOneCntBySabun[s]>=2)
         .map(s=>({sabun:s,name:(allSabun[s]||{}).name||"",dept:(allSabun[s]||{}).dept||"",
-                  applied:appCntBySabun[s]}));
+                  applied:oneToOneCntBySabun[s]}));
 
   STATE.result={winners,slotResults,losers,oneToOneSlots,mailTargets};
   renderResult();
@@ -653,7 +654,7 @@ function renderResult(){
 
   // 선택지 메일
   let m='<p class="note">explain ③: 경쟁률 1:1(본인 외 신청자 없음) 객실 목록에 <b>2건 이상</b> 신청한 구성원 — 선택지 안내 대상입니다(자동 발송 아님).</p>'
-       +'<div class="scroll"><table><thead><tr><th>사번</th><th>성명</th><th>부서</th><th>총 신청건수</th></tr></thead><tbody>';
+       +'<div class="scroll"><table><thead><tr><th>사번</th><th>성명</th><th>부서</th><th>1:1 신청건수</th></tr></thead><tbody>';
   R.mailTargets.sort((a,b)=>b.applied-a.applied).forEach(t=>{
     m+=`<tr><td>${esc(t.sabun)}</td><td>${esc(t.name)}</td><td>${esc(t.dept)}</td><td>${t.applied}</td></tr>`;
   });
@@ -688,8 +689,8 @@ document.getElementById("btn-dl-lose").addEventListener("click",()=>{
   downloadSheet(rows,"추첨_낙첨자.xlsx","낙첨자");
 });
 document.getElementById("btn-dl-mail").addEventListener("click",()=>{
-  const rows=STATE.result.mailTargets.map(t=>({사번:t.sabun,성명:t.name,부서:t.dept,총신청건수:t.applied}));
-  downloadSheet(rows.length?rows:[{사번:"",성명:"",부서:"",총신청건수:""}],"선택지메일_대상.xlsx","선택지메일");
+  const rows=STATE.result.mailTargets.map(t=>({사번:t.sabun,성명:t.name,부서:t.dept,"1:1신청건수":t.applied}));
+  downloadSheet(rows.length?rows:[{사번:"",성명:"",부서:"","1:1신청건수":""}],"선택지메일_대상.xlsx","선택지메일");
 });
 
 document.getElementById("btn-draw").addEventListener("click",draw);
