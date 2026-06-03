@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>엑셀 중복 검출 도구</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', 'Malgun Gothic', sans-serif;
+    background: #f3f4f6;
+    margin: 0;
+    padding: 40px 20px;
+    color: #1f2937;
+  }
+  .app {
+    max-width: 720px;
+    margin: 0 auto;
+    background: #fff;
+    padding: 32px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+  }
+  .app-header { margin-bottom: 20px; }
+  .app-header h1 { margin: 0 0 6px; font-size: 22px; }
+  .subtitle { margin: 0; color: #6b7280; font-size: 13px; }
+
+  .tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 24px;
+    border-bottom: 1px solid #e5e7eb;
+    padding-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  .tab-button {
+    background: transparent;
+    color: #6b7280;
+    border: 0;
+    padding: 8px 16px;
+    border-radius: 999px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+  .tab-button:hover:not(.active) { background: #f3f4f6; color: #1f2937; }
+  .tab-button.active { background: #2563eb; color: #fff; }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+  .tab-panel > h2 {
+    margin: 0 0 8px;
+    font-size: 17px;
+    color: #1f2937;
+  }
+
+  p.desc { margin: 0 0 24px; color: #6b7280; font-size: 14px; line-height: 1.6; }
+  .section {
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .section h2 {
+    margin: 0 0 12px;
+    font-size: 15px;
+    color: #374151;
+  }
+  button {
+    background: #2563eb;
+    color: #fff;
+    border: 0;
+    padding: 10px 18px;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  button:hover:not(:disabled) { background: #1d4ed8; }
+  button:disabled { background: #9ca3af; cursor: not-allowed; }
+  button.secondary { background: #10b981; }
+  button.secondary:hover:not(:disabled) { background: #059669; }
+  input[type="file"] {
+    display: block;
+    margin-bottom: 12px;
+    font-size: 14px;
+  }
+  input[type="file"]:disabled { opacity: 0.5; cursor: not-allowed; }
+  .file-info {
+    font-size: 13px;
+    color: #6b7280;
+    margin-bottom: 12px;
+    min-height: 18px;
+  }
+  .result {
+    margin-top: 16px;
+    padding: 12px 14px;
+    border-radius: 6px;
+    font-size: 14px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+  }
+  .result.success { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+  .result.error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+  .hint { font-size: 12px; color: #9ca3af; margin-top: 8px; }
+
+  .prep-banner {
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fde68a;
+    border-radius: 8px;
+    padding: 16px 18px;
+    text-align: center;
+    font-size: 14px;
+    margin-bottom: 16px;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="app-header">
+    <h1>엑셀 유틸리티</h1>
+    <p class="subtitle">엑셀 업로드 → 자동 처리 → 결과 다운로드</p>
+  </header>
+
+  <!-- 새 도구 추가: 아래 nav 에 <button class="tab-button" data-target="panel-XXX"> 한 줄, 그 아래에 <section class="tab-panel" id="panel-XXX"> 패널 한 블록을 추가하면 됨 -->
+  <nav class="tabs" role="tablist">
+    <button class="tab-button active" data-target="panel-dedup"   type="button" role="tab">엑셀 중복 검출</button>
+    <button class="tab-button"        data-target="panel-lottery" type="button" role="tab">휴양지 랜덤 추첨</button>
+  </nav>
+
+  <section class="tab-panel active" id="panel-dedup" role="tabpanel">
+    <p class="desc">
+      엑셀 파일을 업로드하면 <b id="colsSummary"></b> 3개 조합이 같은 행에서 첫 행만 남기고 나머지를 제거합니다.<br>
+      결과 파일은 2개 시트로 저장됩니다 — <b>원본</b>(업로드 그대로) / <b>중복제거</b>(정렬 + 중복 제거 최종본, 탭 노란색).<br>
+      헤더는 <b id="headerStartLabel">A1</b> 셀부터 시작해야 하며, 반드시 <b id="colsList"></b> 컬럼이 있어야 합니다.
+    </p>
+
+    <div class="section">
+      <h2>1. 샘플 데이터</h2>
+      <button class="secondary" id="btnSample">샘플 엑셀 다운로드</button>
+      <div class="hint">테스트용 샘플: 다자녀(중복 아님)와 진짜 중복이 섞인 시나리오.</div>
+    </div>
+
+    <div class="section">
+      <h2>2. 엑셀 업로드 및 중복 검사</h2>
+      <input type="file" id="fileInput" accept=".xlsx,.xls">
+      <div class="file-info" id="fileInfo">선택된 파일 없음</div>
+      <button id="btnProcess" disabled>중복 검사 및 다운로드</button>
+      <div id="result"></div>
+    </div>
+  </section>
+
+  <section class="tab-panel" id="panel-lottery" role="tabpanel">
+    <p class="desc">
+      신청 명단 엑셀을 업로드하면 자동으로 추첨해 결과 파일을 다운로드합니다.
+    </p>
+
+    <div class="prep-banner">🔨 서비스 준비 중입니다</div>
+
+    <div class="section">
+      <h2>엑셀 업로드</h2>
+      <input type="file" accept=".xlsx,.xls" disabled>
+      <div class="file-info">서비스 오픈 후 사용 가능합니다</div>
+      <button disabled>추첨하기</button>
+    </div>
+  </section>
+</div>
+
+<script>
+// === 컬럼명 설정 (여기만 수정하면 로직과 화면 안내가 함께 갱신됨) ===
+// 실제 업로드할 엑셀 파일의 헤더 텍스트와 정확히 일치시키세요.
+const COL_EMP_ID = '사번';      // 예: '사원번호'
+const COL_NAME   = '이름';      // 예: '이름명'
+const COL_CHILD  = '자식이름';  // 예: '자식명'
+
+// 헤더(컬럼명) 행의 시작 셀. 'A1'(기본), 'C5' 등 엑셀 셀 주소로 지정.
+const HEADER_START = 'A1';      // 예: 'C5'
+
+document.getElementById('colsSummary').textContent =
+  `${COL_EMP_ID} + ${COL_NAME} + ${COL_CHILD}`;
+document.getElementById('colsList').textContent =
+  `${COL_EMP_ID}, ${COL_NAME}, ${COL_CHILD}`;
+document.getElementById('headerStartLabel').textContent = HEADER_START;
+
+const SAMPLE_DATA = [
+  [COL_EMP_ID, COL_NAME, COL_CHILD, '부서', '입사일'],
+  ['E004', '정수진', '정하늘', '개발팀',   '2024-02-01'],
+  ['E001', '김철수', '김민지', '개발팀',   '2023-01-15'],
+  ['E002', '이영희', '박서연', '디자인팀', '2023-03-22'],
+  ['E003', '박민수', '',       '영업팀',   '2022-11-10'],
+  ['E001', '김철수', '김민호', '개발팀',   '2023-01-15'],
+  ['E005', '한지원', '',       '마케팅팀', '2023-07-08'],
+  ['E002', '이영희', '박서연', '디자인팀', '2023-03-22'],
+  ['E004', '정수진', '정한별', '개발팀',   '2024-02-01'],
+  ['E001', '김철수', '김민지', '개발팀',   '2023-01-15'],
+  ['E006', '최동현', '최도윤', '영업팀',   '2024-05-19']
+];
+
+document.querySelectorAll('.tab-button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const target = btn.dataset.target;
+    document.querySelectorAll('.tab-button').forEach(b => b.classList.toggle('active', b === btn));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === target));
+  });
+});
+
+const fileInput = document.getElementById('fileInput');
+const fileInfo  = document.getElementById('fileInfo');
+const btnProcess = document.getElementById('btnProcess');
+const btnSample  = document.getElementById('btnSample');
+const resultBox  = document.getElementById('result');
+
+let loadedFile = null;
+
+btnSample.addEventListener('click', () => {
+  const { c: headerCol } = XLSX.utils.decode_cell(HEADER_START);
+  const ws = XLSX.utils.aoa_to_sheet(SAMPLE_DATA, { origin: HEADER_START });
+  const baseWidths = [{ wch: 8 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 14 }];
+  ws['!cols'] = [...Array(headerCol).fill({ wch: 3 }), ...baseWidths];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
+  XLSX.writeFile(wb, 'sample.xlsx');
+});
+
+fileInput.addEventListener('change', (e) => {
+  loadedFile = e.target.files[0] || null;
+  resultBox.innerHTML = '';
+  resultBox.className = '';
+  if (loadedFile) {
+    fileInfo.textContent = `📄 ${loadedFile.name} (${(loadedFile.size / 1024).toFixed(1)} KB)`;
+    btnProcess.disabled = false;
+  } else {
+    fileInfo.textContent = '선택된 파일 없음';
+    btnProcess.disabled = true;
+  }
+});
+
+btnProcess.addEventListener('click', () => {
+  if (!loadedFile) return;
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      await processWorkbook(e.target.result, loadedFile.name);
+    } catch (err) {
+      showResult('error', '처리 중 오류: ' + err.message);
+    }
+  };
+  reader.onerror = () => showResult('error', '파일을 읽는 데 실패했습니다.');
+  reader.readAsArrayBuffer(loadedFile);
+});
+
+const HEADER_STYLE = {
+  font: { bold: true },
+  fill: { patternType: 'solid', fgColor: { rgb: 'E5E7EB' } },
+  alignment: { horizontal: 'center', vertical: 'center' }
+};
+const DUP_STYLE = {
+  fill: { patternType: 'solid', fgColor: { rgb: 'FFFF00' } }
+};
+
+async function processWorkbook(arrayBuffer, originalName) {
+  let headerCol, headerRow;
+  try {
+    ({ c: headerCol, r: headerRow } = XLSX.utils.decode_cell(HEADER_START));
+    if (!Number.isInteger(headerCol) || !Number.isInteger(headerRow) || headerCol < 0 || headerRow < 0) {
+      throw new Error();
+    }
+  } catch {
+    showResult('error', `HEADER_START 값이 올바른 셀 주소가 아닙니다: '${HEADER_START}'`);
+    return;
+  }
+
+  const wb = XLSX.read(arrayBuffer, { type: 'array' });
+  const firstSheetName = wb.SheetNames[0];
+  const sheet = wb.Sheets[firstSheetName];
+  const data = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+
+  if (data.length <= headerRow) {
+    showResult('error', `헤더가 있어야 할 ${HEADER_START} 위치에 데이터가 없습니다.`);
+    return;
+  }
+
+  const header = (data[headerRow] || []).slice(headerCol).map(h => String(h).trim());
+  const empIdIdx = header.indexOf(COL_EMP_ID);
+  const nameIdx  = header.indexOf(COL_NAME);
+  const childIdx = header.indexOf(COL_CHILD);
+
+  const missing = [];
+  if (empIdIdx === -1) missing.push(COL_EMP_ID);
+  if (nameIdx  === -1) missing.push(COL_NAME);
+  if (childIdx === -1) missing.push(COL_CHILD);
+  if (missing.length > 0) {
+    showResult('error', `다음 컬럼을 찾을 수 없습니다: ${missing.join(', ')}\n현재 헤더(${HEADER_START}부터): ${header.join(', ')}`);
+    return;
+  }
+
+  const bodyRows = [];
+  for (let i = headerRow + 1; i < data.length; i++) {
+    const fullRow = data[i] || [];
+    const row = fullRow.slice(headerCol);
+    if (!row || row.every(c => c === '' || c === null || c === undefined)) continue;
+    bodyRows.push(row);
+  }
+
+  const sortedRows = bodyRows.slice().sort((a, b) =>
+    String(a[empIdIdx] ?? '').localeCompare(String(b[empIdIdx] ?? ''), 'ko') ||
+    String(a[nameIdx]  ?? '').localeCompare(String(b[nameIdx]  ?? ''), 'ko') ||
+    String(a[childIdx] ?? '').localeCompare(String(b[childIdx] ?? ''), 'ko')
+  );
+
+  const keyOf = (row) =>
+    String(row[empIdIdx] ?? '').trim() + '||' +
+    String(row[nameIdx]  ?? '').trim() + '||' +
+    String(row[childIdx] ?? '').trim();
+
+  const groups = new Map();
+  sortedRows.forEach((row, idx) => {
+    const key = keyOf(row);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(idx);
+  });
+
+  const dupRowSet = new Set();
+  let dupGroupCount = 0;
+  for (const [, rows] of groups) {
+    if (rows.length >= 2) {
+      dupGroupCount++;
+      rows.forEach(r => dupRowSet.add(r));
+    }
+  }
+
+  const seenKeys = new Set();
+  const dedupedRows = [];
+  for (const row of sortedRows) {
+    const key = keyOf(row);
+    if (seenKeys.has(key)) continue;
+    seenKeys.add(key);
+    dedupedRows.push(row);
+  }
+  const removedCount = sortedRows.length - dedupedRows.length;
+
+  const originalSheet = buildSheet([header, ...bodyRows],   null, HEADER_START);
+  const dedupedSheet  = buildSheet([header, ...dedupedRows], null, HEADER_START);
+
+  const newWb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(newWb, originalSheet, '원본');
+  XLSX.utils.book_append_sheet(newWb, dedupedSheet, '중복제거');
+
+  const xlsxBuffer = XLSX.write(newWb, { type: 'array', bookType: 'xlsx' });
+  const finalBlob = await injectTabColor(xlsxBuffer, '중복제거', 'FFFF00');
+
+  const outName = '중복표시_' + originalName.replace(/\.(xlsx|xls)$/i, '') + '.xlsx';
+  triggerDownload(finalBlob, outName);
+
+  showResult('success',
+    `완료되었습니다.\n` +
+    `· 헤더 시작: ${HEADER_START}\n` +
+    `· 전체 행: ${bodyRows.length}건\n` +
+    `· 중복 그룹: ${dupGroupCount}개 (${COL_EMP_ID}+${COL_NAME}+${COL_CHILD} 동일)\n` +
+    `· 중복 행: ${dupRowSet.size}건\n` +
+    `· 제거된 행: ${removedCount}건\n` +
+    `· 시트: '원본' / '중복제거'(${dedupedRows.length}행, 탭 노란색)\n` +
+    `· 저장 파일: ${outName}`
+  );
+}
+
+async function injectTabColor(xlsxArrayBuffer, targetSheetName, rgb) {
+  const zip = await JSZip.loadAsync(xlsxArrayBuffer);
+
+  const workbookXml = await zip.file('xl/workbook.xml').async('string');
+  const sheetMatch = new RegExp(
+    `<sheet[^>]*name="${escapeForRegex(targetSheetName)}"[^>]*r:id="(rId\\d+)"`
+  ).exec(workbookXml);
+  if (!sheetMatch) throw new Error(`workbook.xml에서 시트 '${targetSheetName}'를 찾지 못함`);
+  const rId = sheetMatch[1];
+
+  const relsXml = await zip.file('xl/_rels/workbook.xml.rels').async('string');
+  const relMatch = new RegExp(
+    `<Relationship[^>]*Id="${rId}"[^>]*Target="([^"]+)"`
+  ).exec(relsXml);
+  if (!relMatch) throw new Error(`workbook.xml.rels에서 ${rId}의 Target을 찾지 못함`);
+
+  const target = relMatch[1].replace(/^\/?xl\//, '');
+  const sheetPath = 'xl/' + target;
+  const sheetXmlFile = zip.file(sheetPath);
+  if (!sheetXmlFile) throw new Error(`${sheetPath} 파일을 찾지 못함`);
+
+  let sheetXml = await sheetXmlFile.async('string');
+  const tabColorTag = `<tabColor rgb="${rgb}"/>`;
+
+  if (/<sheetPr\b[^>]*\/>/.test(sheetXml)) {
+    sheetXml = sheetXml.replace(/<sheetPr\b([^>]*)\/>/, `<sheetPr$1>${tabColorTag}</sheetPr>`);
+  } else if (/<sheetPr\b[^>]*>/.test(sheetXml)) {
+    if (/<tabColor\b[^/]*\/>/.test(sheetXml)) {
+      sheetXml = sheetXml.replace(/<tabColor\b[^/]*\/>/, tabColorTag);
+    } else {
+      sheetXml = sheetXml.replace(/(<sheetPr\b[^>]*>)/, `$1${tabColorTag}`);
+    }
+  } else {
+    sheetXml = sheetXml.replace(/(<worksheet\b[^>]*>)/, `$1<sheetPr>${tabColorTag}</sheetPr>`);
+  }
+
+  zip.file(sheetPath, sheetXml);
+  return zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+}
+
+function escapeForRegex(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function triggerDownload(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function buildSheet(rows, dupBodyIndexSet, origin) {
+  const ws = origin
+    ? XLSX.utils.aoa_to_sheet(rows, { origin })
+    : XLSX.utils.aoa_to_sheet(rows);
+  const range = XLSX.utils.decode_range(ws['!ref']);
+  const headerR = range.s.r;
+  const startC  = range.s.c;
+
+  for (let C = startC; C <= range.e.c; C++) {
+    const addr = XLSX.utils.encode_cell({ r: headerR, c: C });
+    if (ws[addr]) ws[addr].s = HEADER_STYLE;
+  }
+
+  if (dupBodyIndexSet && dupBodyIndexSet.size > 0) {
+    for (const bodyIdx of dupBodyIndexSet) {
+      const r = headerR + 1 + bodyIdx;
+      for (let C = startC; C <= range.e.c; C++) {
+        const addr = XLSX.utils.encode_cell({ r, c: C });
+        if (!ws[addr]) ws[addr] = { t: 's', v: '' };
+        ws[addr].s = DUP_STYLE;
+      }
+    }
+  }
+
+  const colWidths = Array(startC).fill({ wch: 3 });
+  for (let C = startC; C <= range.e.c; C++) {
+    let max = 8;
+    for (let R = headerR; R <= range.e.r; R++) {
+      const addr = XLSX.utils.encode_cell({ r: R, c: C });
+      const v = ws[addr] ? String(ws[addr].v ?? '') : '';
+      const len = [...v].reduce((s, ch) => s + (ch.charCodeAt(0) > 127 ? 2 : 1), 0);
+      if (len > max) max = len;
+    }
+    colWidths.push({ wch: Math.min(max + 2, 40) });
+  }
+  ws['!cols'] = colWidths;
+  return ws;
+}
+
+function showResult(type, msg) {
+  resultBox.className = 'result ' + type;
+  resultBox.textContent = msg;
+}
+</script>
+</body>
+</html>

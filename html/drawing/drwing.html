@@ -1,0 +1,1249 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>사내복지기금운영국</title>
+<!-- 엑셀 중복 검출용: 셀 스타일 지원 xlsx-js-style를 먼저 로드해 XLSXStyle로 캡처 -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+<script>var XLSXStyle = window.XLSX;</script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<!-- 추첨용 SheetJS 0.18.5 — 반드시 마지막에 로드해 window.XLSX를 추첨 코드가 기대하는 버전으로 복원 -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --bg:#f1f5f9; --panel:#ffffff; --panel2:#f8fafc; --line:#e2e8f0;
+    --text:#1e293b; --muted:#64748b; --accent:#2563eb; --accent2:#3b82f6;
+    --ok:#16a34a; --warn:#d97706; --bad:#dc2626; --chip:#eef2f7;
+    --shadow:0 1px 2px rgba(15,23,42,.06),0 1px 3px rgba(15,23,42,.08);
+    --shadow-hover:0 4px 12px rgba(37,99,235,.12);
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:"Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;
+       background:var(--bg);color:var(--text);line-height:1.5;
+       -webkit-font-smoothing:antialiased;}
+  header{padding:22px 28px;border-bottom:1px solid var(--line);background:var(--panel);}
+  header h1{margin:0;font-size:21px;font-weight:700;letter-spacing:-.01em;}
+  /* 헤더 단계 요약 */
+  .flow{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:2px 0 16px;
+        color:var(--muted);font-size:12.5px;}
+  .flow .f{display:inline-flex;align-items:center;gap:6px;padding:4px 11px;border-radius:20px;
+           background:var(--panel2);border:1px solid var(--line);cursor:pointer;transition:.15s;}
+  .flow .f:hover{border-color:var(--accent);color:var(--accent);background:#eff6ff;}
+  .flow .f .n{display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;
+              border-radius:50%;background:#dbeafe;color:var(--accent);font-size:10.5px;font-weight:700;}
+  .flow .arr{color:#cbd5e1;font-size:12px;}
+  main{max-width:1180px;margin:0 auto;padding:28px 20px 80px;}
+  .step{background:var(--panel);border:1px solid var(--line);border-radius:14px;margin-bottom:18px;
+        overflow:hidden;box-shadow:var(--shadow);transition:opacity .2s, box-shadow .2s;}
+  .step.disabled{opacity:.55;pointer-events:none;box-shadow:none;}
+  .step.is-current{box-shadow:0 0 0 2px rgba(37,99,235,.18),var(--shadow);}
+  .step-hd{display:flex;align-items:center;gap:13px;padding:16px 20px;border-bottom:1px solid var(--line);}
+  .step-hd .num{width:30px;height:30px;border-radius:50%;background:#e2e8f0;color:var(--muted);
+       display:flex;align-items:center;justify-content:center;font-weight:700;flex:0 0 auto;
+       font-size:14px;transition:.2s;}
+  .step.is-current .num{background:var(--accent);color:#fff;box-shadow:0 0 0 4px rgba(37,99,235,.15);}
+  .step.is-done .num{background:var(--ok);color:#fff;}
+  .step.is-done .num::after{content:"✓";}
+  .step.is-done .num .nlabel{display:none;}
+  .step-hd h2{margin:0;font-size:16px;font-weight:700;}
+  .step-hd .sub{color:var(--muted);font-size:12px;font-weight:400;}
+  /* 헤더 우측 상태 칩 */
+  .st-state{margin-left:auto;font-size:11.5px;font-weight:600;padding:4px 11px;border-radius:20px;
+            white-space:nowrap;}
+  .is-wait .st-state{background:var(--panel2);color:var(--muted);border:1px solid var(--line);}
+  .is-current .st-state{background:#dbeafe;color:var(--accent);}
+  .is-done .st-state{background:#dcfce7;color:#15803d;}
+  .st-state::before{margin-right:5px;}
+  .is-wait .st-state::before{content:"○";}
+  .is-current .st-state::before{content:"●";}
+  .is-done .st-state::before{content:"✓";}
+  .step-bd{padding:18px 20px;}
+  .drop{display:block;border:2px dashed var(--line);border-radius:12px;padding:30px;text-align:center;
+        cursor:pointer;background:var(--panel2);
+        transition:border-color .15s, background-color .15s, box-shadow .15s;}
+  .drop:hover,.drop.over{border-color:var(--accent);background:#eff6ff;box-shadow:var(--shadow-hover);}
+  .drop.over{border-style:solid;}
+  .drop input{display:none;}
+  .drop .big{font-size:14px;}
+  .drop .big b{color:var(--text);}
+  .drop .hint{color:var(--muted);font-size:12.5px;margin-top:7px;}
+  code{background:#eef2f7;border:1px solid var(--line);border-radius:5px;padding:1px 6px;
+       font-size:12px;color:#334155;}
+  button{font-family:inherit;font-size:14px;border:0;border-radius:9px;padding:10px 18px;cursor:pointer;
+         background:var(--accent);color:#fff;font-weight:600;transition:filter .15s, box-shadow .15s;
+         box-shadow:var(--shadow);}
+  button:hover{filter:brightness(.95);box-shadow:var(--shadow-hover);}
+  button.ghost{background:var(--panel);border:1px solid var(--line);color:var(--text);font-weight:500;
+               box-shadow:none;}
+  button.ghost:hover{border-color:var(--accent);color:var(--accent);filter:none;box-shadow:none;}
+  button:disabled{opacity:.4;cursor:not-allowed;filter:none;box-shadow:none;}
+  .to-top{position:fixed;right:24px;bottom:24px;width:46px;height:46px;border-radius:50%;
+          padding:0;font-size:20px;display:flex;align-items:center;justify-content:center;
+          background:var(--accent);color:#fff;box-shadow:var(--shadow-hover);z-index:50;
+          opacity:0;visibility:hidden;transform:translateY(8px);
+          transition:opacity .2s, transform .2s, visibility .2s;}
+  .to-top.show{opacity:1;visibility:visible;transform:translateY(0);}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;}
+  .chip{background:var(--chip);border:1px solid var(--line);border-radius:20px;padding:5px 13px;font-size:13px;color:var(--muted);}
+  .chip b{color:var(--text);}
+  .chip.total{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600;}
+  .chip.total b{color:#fff;}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th,td{padding:8px 11px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;}
+  th{color:var(--muted);font-weight:600;position:sticky;top:0;background:var(--panel2);z-index:1;}
+  tbody tr:hover{background:#f8fbff;}
+  .scroll{max-height:430px;overflow:auto;border:1px solid var(--line);border-radius:10px;margin-top:12px;}
+  .badge{font-size:11px;padding:2px 8px;border-radius:12px;font-weight:700;white-space:nowrap;}
+  .b-auto{background:#dcfce7;color:#15803d;}
+  .b-sug{background:#fef3c7;color:#b45309;}
+  .b-none{background:#fee2e2;color:#b91c1c;}
+  .b-empty{background:#eef2f7;color:#64748b;}
+  select{font-family:inherit;font-size:12px;font-weight:600;background:var(--panel);color:var(--text);
+         border:1px solid var(--line);border-radius:7px;padding:6px 8px;max-width:340px;transition:border-color .15s, box-shadow .15s;}
+  select option{font-weight:600;}
+  select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.15);}
+  .note{font-size:12px;color:var(--muted);margin-top:8px;}
+  .summary{display:flex;gap:14px;flex-wrap:wrap;margin:4px 0 14px;}
+  .card{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:13px 17px;min-width:120px;}
+  .card .k{color:var(--muted);font-size:12px;}
+  .card .v{font-size:22px;font-weight:700;}
+  .v.ok{color:var(--ok);} .v.warn{color:var(--warn);} .v.bad{color:var(--bad);}
+  .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;}
+  .tab{padding:8px 15px;border-radius:9px 9px 0 0;background:var(--panel2);cursor:pointer;font-size:13px;
+       border:1px solid var(--line);border-bottom:none;color:var(--muted);transition:.15s;}
+  .tab:hover{color:var(--text);}
+  .tab.active{background:var(--accent);color:#fff;font-weight:700;border-color:var(--accent);}
+  .hidden{display:none;}
+  .filterbar{display:flex;gap:10px;align-items:center;margin-top:16px;margin-bottom:8px;flex-wrap:wrap;}
+  .filterbar input[type=text]{background:var(--panel);border:1px solid var(--line);color:var(--text);
+       border-radius:7px;padding:8px 11px;font-size:13px;min-width:220px;transition:border-color .15s, box-shadow .15s;}
+  .filterbar input[type=text]:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.15);}
+  .ok-txt{color:var(--ok);} .warn-txt{color:var(--warn);} .bad-txt{color:var(--bad);}
+  .legend{font-size:12px;color:var(--muted);display:flex;gap:14px;flex-wrap:wrap;margin-top:6px;}
+  .mini{font-size:11px;color:var(--muted);}
+  h3{margin:18px 0 6px;font-size:14px;}
+  /* ===== 최상단 탭 바 (추첨 / 엑셀 중복 검출) ===== */
+  .toptabs{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;}
+  .toptab{padding:9px 18px;border-radius:9px;background:var(--panel2);cursor:pointer;
+          font-size:13.5px;font-weight:600;border:1px solid var(--line);color:var(--muted);
+          transition:.15s;box-shadow:var(--shadow);}
+  .toptab:hover{color:var(--text);border-color:var(--accent);}
+  .toptab.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+  /* ===== 엑셀 중복 검출 패널 ===== */
+  .dd-desc{font-size:13px;color:var(--muted);line-height:1.7;margin:2px 0 16px;}
+  .dd-desc b{color:var(--text);}
+  .dd-result{margin-top:16px;padding:13px 16px;border-radius:10px;font-size:13px;
+             line-height:1.6;white-space:pre-wrap;border:1px solid var(--line);}
+  .dd-result.success{background:#f0fdf4;color:#15803d;border-color:#bbf7d0;}
+  .dd-result.error{background:#fef2f2;color:#b91c1c;border-color:#fecaca;}
+  /* ===== 선택지메일 객실 복사 버튼 ===== */
+  .room-line{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:3px 0;}
+  .copybtn{font-size:11px;font-weight:600;padding:3px 10px;border-radius:6px;
+           background:var(--panel);border:1px solid var(--line);color:var(--accent);
+           box-shadow:none;flex:0 0 auto;}
+  .copybtn:hover{border-color:var(--accent);background:#eff6ff;filter:none;box-shadow:none;}
+</style>
+</head>
+<body>
+<header>
+  <h1>🏢 사내복지기금운영국</h1>
+  <nav class="toptabs" id="toptabs">
+    <span class="toptab active" data-view="view-lottery">🎲 휴양지 랜덤 추첨</span>
+    <span class="toptab" data-view="view-dedup">🧹 엑셀 중복 검출</span>
+  </nav>
+</header>
+
+<main id="view-lottery">
+
+  <div class="flow">
+    <span class="f" data-target="step1"><span class="n">1</span> 객실 LIST</span><span class="arr">→</span>
+    <span class="f" data-target="step2"><span class="n">2</span> 신청명단</span><span class="arr">→</span>
+    <span class="f" data-target="step3"><span class="n">3</span> 매칭 검수</span><span class="arr">→</span>
+    <span class="f" data-target="step4"><span class="n">4</span> 추첨</span><span class="arr">→</span>
+    <span class="f" data-target="step5"><span class="n">5</span> 결과/다운로드</span>
+  </div>
+
+  <!-- STEP 1 -->
+  <section class="step" id="step1">
+    <div class="step-hd"><span class="num"><span class="nlabel">1</span></span>
+      <div><h2>객실 LIST 업로드 <span class="sub">— source.xlsx (객실별 추첨 정원)</span></h2></div>
+      <span class="st-state"></span>
+    </div>
+    <div class="step-bd">
+      <label class="drop" id="drop1">
+        <input type="file" id="file1" accept=".xlsx,.xls" />
+        <div class="big">📂 <b>객실 LIST 엑셀</b>을 끌어다 놓거나 클릭해서 선택</div>
+        <div class="hint">시트 <code>객실 LIST</code>의 객실 한 행 = 당첨 1자리(정원)로 계산합니다.</div>
+      </label>
+      <div id="src-result" class="hidden">
+        <div class="chips" id="src-chips"></div>
+        <div class="scroll"><table id="src-table"></table></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STEP 2 -->
+  <section class="step disabled" id="step2">
+    <div class="step-hd"><span class="num"><span class="nlabel">2</span></span>
+      <div><h2>신청명단 업로드 <span class="sub">— target.xlsx (첫 시트만 사용)</span></h2></div>
+      <span class="st-state"></span>
+    </div>
+    <div class="step-bd">
+      <label class="drop" id="drop2">
+        <input type="file" id="file2" accept=".xlsx,.xls" />
+        <div class="big">📂 <b>신청명단 엑셀</b>을 끌어다 놓거나 클릭해서 선택</div>
+        <div class="hint">첫 번째 시트(예: <code>휴양소 조회처리_0410</code>)만 사용합니다. 다른 시트는 무시.</div>
+      </label>
+      <div id="tgt-result" class="hidden">
+        <div class="chips" id="tgt-chips"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STEP 3 -->
+  <section class="step disabled" id="step3">
+    <div class="step-hd"><span class="num"><span class="nlabel">3</span></span>
+      <div><h2>매칭 검수 <span class="sub">— 객실(정원) ↔ 신청 그룹 연결</span></h2></div>
+      <span class="st-state"></span>
+    </div>
+    <div class="step-bd">
+      <div class="summary" id="match-summary"></div>
+      <div class="legend">
+        <span><span class="badge b-auto">자동</span> 정규화 자동 매칭</span>
+        <span><span class="badge b-sug">추천</span> 유사 후보 — 확인 권장</span>
+        <span><span class="badge b-none">미매칭</span> 직접 연결 필요</span>
+        <span><span class="badge b-empty">신청없음</span> 신청자 0 (빈 객실)</span>
+      </div>
+      <div class="filterbar">
+        <input type="text" id="match-filter" placeholder="리조트/지역/타입 검색…" />
+        <label class="mini"><input type="checkbox" id="only-issue" checked /> 검수필요(추천·미매칭)만 보기</label>
+      </div>
+      <div class="scroll"><table id="match-table"></table></div>
+      <div class="row" style="margin-top:14px;">
+        <button id="btn-confirm">✅ 매칭 확정</button>
+        <span class="note" id="match-note"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- STEP 4 -->
+  <section class="step disabled" id="step4">
+    <div class="step-hd"><span class="num"><span class="nlabel">4</span></span>
+      <div><h2>추첨 실행 <span class="sub">— 호반 → 롯데 → 대명 → 오크밸리 → 한화 / 1인 최대 1객실 / 완전 무작위</span></h2></div>
+      <span class="st-state"></span>
+    </div>
+    <div class="step-bd">
+      <div class="row">
+        <button id="btn-draw">🎲 추첨 실행</button>
+        <button class="ghost" id="btn-redraw" disabled>↻ 다시 추첨</button>
+        <span class="note">버튼을 누를 때마다 새로 무작위 추첨합니다(매 실행 결과 상이).</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- STEP 5 -->
+  <section class="step disabled" id="step5">
+    <div class="step-hd"><span class="num"><span class="nlabel">5</span></span>
+      <div><h2>결과 / 리포트 <span class="sub">— 다운로드</span></h2></div>
+      <span class="st-state"></span>
+    </div>
+    <div class="step-bd">
+      <div class="summary" id="result-summary"></div>
+      <div class="row" style="margin-bottom:14px;">
+        <button id="btn-dl-all">⬇ 결과 전체 (.xlsx) — 시트 4개</button>
+      </div>
+      <div class="tabs" id="result-tabs"></div>
+      <div id="tab-win"></div>
+      <div id="tab-unfilled" class="hidden"></div>
+      <div id="tab-mail" class="hidden"></div>
+      <div id="tab-lose" class="hidden"></div>
+    </div>
+  </section>
+
+</main>
+
+<main id="view-dedup" class="hidden">
+  <p class="dd-desc">
+    엑셀 파일을 업로드하면 <b id="dd-colsSummary"></b> 3개 조합이 같은 행에서 첫 행만 남기고 나머지를 제거합니다.<br>
+    결과 파일은 2개 시트로 저장됩니다 — <b>원본</b>(업로드 그대로) / <b>중복제거</b>(정렬 + 중복 제거 최종본, 탭 노란색).<br>
+    헤더는 <b id="dd-headerStartLabel">A1</b> 셀부터 시작해야 하며, 반드시 <b id="dd-colsList"></b> 컬럼이 있어야 합니다.
+  </p>
+
+  <section class="step is-current">
+    <div class="step-hd"><span class="num"><span class="nlabel">1</span></span>
+      <div><h2>샘플 데이터 <span class="sub">— 테스트용 엑셀</span></h2></div>
+    </div>
+    <div class="step-bd">
+      <div class="row">
+        <button class="ghost" id="dd-btnSample">⬇ 샘플 엑셀 다운로드</button>
+        <span class="note">다자녀(중복 아님)와 진짜 중복이 섞인 시나리오.</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="step">
+    <div class="step-hd"><span class="num"><span class="nlabel">2</span></span>
+      <div><h2>엑셀 업로드 및 중복 검사 <span class="sub">— 첫 시트만 사용</span></h2></div>
+    </div>
+    <div class="step-bd">
+      <label class="drop" id="dd-drop">
+        <input type="file" id="dd-fileInput" accept=".xlsx,.xls" />
+        <div class="big">📂 <b>검사할 엑셀</b>을 끌어다 놓거나 클릭해서 선택</div>
+        <div class="hint">헤더는 <code id="dd-headerStartHint">A1</code> 셀부터, <span id="dd-colsList2"></span> 컬럼 필요.</div>
+      </label>
+      <div class="note" id="dd-fileInfo">선택된 파일 없음</div>
+      <div class="row" style="margin-top:12px;">
+        <button id="dd-btnProcess" disabled>🔍 중복 검사 및 다운로드</button>
+      </div>
+      <div id="dd-result"></div>
+    </div>
+  </section>
+</main>
+
+<button id="to-top" class="to-top" aria-label="맨 위로" title="맨 위로">↑</button>
+
+<script>
+"use strict";
+/* ============================================================
+   휴양지 랜덤 추첨 — 단일 파일 도구
+   규칙: rule.md / quota_analysis.md / explain.txt 반영
+   ============================================================ */
+
+const RESORT_ORDER = ["호반", "롯데", "대명", "오크밸리", "한화"];
+
+/* ---------- 정규화 헬퍼 ---------- */
+function canonResort(raw){
+  const s = String(raw||"").replace(/\s/g,"");
+  if(s.includes("리솜")||s.includes("호반")) return "호반";
+  if(s.includes("롯데")) return "롯데";
+  if(s.includes("대명")||s.includes("소노")) return "대명";
+  if(s.includes("오크")) return "오크밸리";
+  if(s.includes("한화")) return "한화";
+  return s.replace(/리조트$/,"");
+}
+// 한글 토큰 집합(괄호 순서/구분 흡수)
+function regionTokens(raw){
+  const s = String(raw||"");
+  const t = s.match(/[가-힣A-Za-z0-9]+/g) || [];
+  return new Set(t.filter(x=>x.length>=2).map(x=>x.toLowerCase()));
+}
+function regionKey(raw){
+  return [...regionTokens(raw)].sort().join("|");
+}
+// 타입 정규화: 영숫자/한글만, 평형 숫자 정리, 잡음 토큰 제거
+function normType(raw){
+  let s = String(raw||"").toLowerCase();
+  s = s.replace(/[\s\-\/()_]/g,"");
+  s = s.replace(/평형|평\(|평$|평(?=[^가-힣])/g,"평");
+  s = s.replace(/취사불가|미취사|취사/g,"");
+  s = s.replace(/[^0-9a-z가-힣]/g,"");
+  // 평형 leading-zero 제거: 025평->25평
+  s = s.replace(/0*(\d+)평/g,"$1평");
+  return s;
+}
+function pad2(n){return ("0"+n).slice(-2);}
+function inDate(v){ // -> "MM.DD"
+  if(typeof v==="number" && isFinite(v)){ // 엑셀 날짜 일련번호 (tz 영향 없음)
+    const d=XLSX.SSF.parse_date_code(v);
+    if(d && d.m) return pad2(d.m)+"."+pad2(d.d);
+  }
+  if(v instanceof Date) return pad2(v.getUTCMonth()+1)+"."+pad2(v.getUTCDate());
+  const s = String(v||"").trim();
+  const nums = s.match(/\d+/g);
+  if(!nums) return s;
+  if(nums.length>=3){ // 연-월-일 또는 월/일/연
+    if(nums[0].length===4) return pad2(nums[1])+"."+pad2(nums[2]); // YYYY M D
+    return pad2(nums[0])+"."+pad2(nums[1]);                        // M D YY
+  }
+  if(nums.length===2) return pad2(nums[0])+"."+pad2(nums[1]);
+  return s;
+}
+// 간단 토큰 유사도 (Dice on 2-grams)
+function bigrams(s){const a=[];for(let i=0;i<s.length-1;i++)a.push(s.slice(i,i+2));return a;}
+function dice(a,b){
+  if(a===b) return 1;
+  if(a.length<2||b.length<2) return 0;
+  const A=bigrams(a),B=bigrams(b),mb={};
+  B.forEach(g=>mb[g]=(mb[g]||0)+1);
+  let inter=0;
+  A.forEach(g=>{if(mb[g]>0){inter++;mb[g]--;}});
+  return 2*inter/(A.length+B.length);
+}
+
+/* ---------- 상태 ---------- */
+const STATE = {
+  slots: [],        // {id, resort, region, type, in, quota, key}
+  apps: [],         // {sabun, name, dept, resort, region, type, in, key}
+  groups: {},       // groupKey -> {resort,region,type,in, sabuns:Set, apps:[]}
+  matchMap: {},      // slotId -> groupKey | null
+  result: null,
+};
+
+/* ============================================================
+   STEP 1 — 객실 LIST(정원) 파싱
+   ============================================================ */
+function parseSource(wb){
+  let ws = wb.Sheets["객실 LIST"] || wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws,{header:1,raw:false,defval:null});
+  // 헤더 행 찾기: 'No.' 와 '리조트명' 포함된 행
+  let h=-1;
+  for(let i=0;i<rows.length;i++){
+    const line=(rows[i]||[]).map(c=>String(c||""));
+    if(line.some(c=>c.includes("리조트명")) && line.some(c=>/No\.?/.test(c))){h=i;break;}
+  }
+  if(h<0) h=11; // fallback 12행
+  const hdr=(rows[h]||[]).map(c=>String(c||"").replace(/\s/g,""));
+  const col=name=>hdr.findIndex(c=>c.includes(name));
+  const cNo=col("No"), cResort=col("리조트명"), cRegion=col("지역"),
+        cType=col("타입"), cIn=col("입실일");
+  const slots=[];
+  for(let i=h+1;i<rows.length;i++){
+    const r=rows[i]||[];
+    const no=r[cNo];
+    if(no===null||no===undefined||String(no).trim()==="") continue;
+    if(!/^\d+$/.test(String(no).trim())) continue;
+    let resort=canonResort(r[cResort]);
+    let region=String(r[cRegion]||"").trim();
+    let type=String(r[cType]||"").trim();
+    // 한화: "지역 / 타입" 분리
+    if(type.includes("/")){
+      const parts=type.split("/");
+      region=parts[0].trim();
+      type=parts.slice(1).join("/").trim();
+    }
+    const din=inDate(r[cIn]);
+    slots.push({resort,region,type,in:din});
+  }
+  // (resort,region,type,in)별 정원 집계
+  const map={};
+  slots.forEach(s=>{
+    const key=[s.resort,regionKey(s.region),normType(s.type),s.in].join("§");
+    if(!map[key]) map[key]={id:key,resort:s.resort,region:s.region,type:s.type,in:s.in,quota:0,
+                            ntype:normType(s.type), rkey:regionKey(s.region)};
+    map[key].quota++;
+  });
+  STATE.slots=Object.values(map);
+  renderSource();
+}
+function renderSource(){
+  const byResort={};
+  let total=0;
+  STATE.slots.forEach(s=>{byResort[s.resort]=(byResort[s.resort]||0)+s.quota;total+=s.quota;});
+  const chips=document.getElementById("src-chips");
+  chips.innerHTML="";
+  RESORT_ORDER.forEach(r=>{
+    if(byResort[r]) chips.insertAdjacentHTML("beforeend",`<span class="chip">${r} <b>${byResort[r]}</b>박</span>`);
+  });
+  chips.insertAdjacentHTML("beforeend",`<span class="chip total">총 <b>${total}</b>박 · 신청 가능 객실 <b>${STATE.slots.length}</b></span>`);
+  const t=document.getElementById("src-table");
+  let html="<thead><tr><th>순번</th><th>리조트</th><th>지역</th><th>타입</th><th>입실일</th><th>정원</th></tr></thead><tbody>";
+  STATE.slots.slice().sort(sortSlot).forEach((s,i)=>{
+    html+=`<tr><td>${i+1}</td><td>${s.resort}</td><td>${esc(s.region)}</td><td>${esc(s.type)}</td><td>${s.in}</td><td>${s.quota}</td></tr>`;
+  });
+  t.innerHTML=html+"</tbody>";
+  document.getElementById("src-result").classList.remove("hidden");
+  enableStep("step2");
+}
+function sortSlot(a,b){
+  const ai=RESORT_ORDER.indexOf(a.resort),bi=RESORT_ORDER.indexOf(b.resort);
+  if(ai!==bi) return ai-bi;
+  if(a.region!==b.region) return a.region<b.region?-1:1;
+  if(a.in!==b.in) return a.in<b.in?-1:1;
+  return a.type<b.type?-1:1;
+}
+
+/* ============================================================
+   STEP 2 — 신청명단(첫 시트) 파싱
+   ============================================================ */
+function parseTarget(wb){
+  const ws = wb.Sheets[wb.SheetNames[0]]; // 첫 시트 강제
+  const rows = XLSX.utils.sheet_to_json(ws,{header:1,defval:null,raw:true});
+  const hdr=(rows[0]||[]).map(c=>String(c||"").replace(/\s/g,""));
+  const col=name=>hdr.findIndex(c=>c.includes(name));
+  const cSabun=col("사번"),cName=col("성명"),cDeptC=col("부서코드"),cDept=col("부서명"),
+        cResort=col("리조트"),cRegion=col("지역"),cType=col("룸타입"),cIn=col("입실일");
+  const apps=[];
+  for(let i=1;i<rows.length;i++){
+    const r=rows[i]||[];
+    const sabun=r[cSabun];
+    if(!sabun||String(sabun).trim()==="") continue;
+    apps.push({
+      sabun:String(sabun).trim(),
+      name:String(r[cName]||"").trim(),
+      dept:String(r[cDept]||"").trim(),
+      resort:canonResort(r[cResort]),
+      region:String(r[cRegion]||"").trim(),
+      type:String(r[cType]||"").trim(),
+      in:inDate(r[cIn]),
+    });
+  }
+  STATE.apps=apps;
+  // 신청건 → 그룹 (resort,regionKey,ntype,in)
+  const groups={};
+  apps.forEach(a=>{
+    const gk=[a.resort,regionKey(a.region),normType(a.type),a.in].join("§");
+    if(!groups[gk]) groups[gk]={key:gk,resort:a.resort,region:a.region,type:a.type,in:a.in,
+                                ntype:normType(a.type),rkey:regionKey(a.region),sabuns:new Set(),apps:[]};
+    groups[gk].apps.push(a);
+    groups[gk].sabuns.add(a.sabun);
+  });
+  STATE.groups=groups;
+  renderTargetChips();
+  autoMatch();
+  renderMatch();
+  enableStep("step3");
+}
+function renderTargetChips(){
+  const byResort={};
+  STATE.apps.forEach(a=>{byResort[a.resort]=(byResort[a.resort]||0)+1;});
+  const uniq=new Set(STATE.apps.map(a=>a.sabun)).size;
+  const chips=document.getElementById("tgt-chips");
+  chips.innerHTML="";
+  RESORT_ORDER.forEach(r=>{if(byResort[r])chips.insertAdjacentHTML("beforeend",`<span class="chip">${r} <b>${byResort[r]}</b>건</span>`);});
+  chips.insertAdjacentHTML("beforeend",`<span class="chip total">총 <b>${STATE.apps.length}</b>신청건 · <b>${uniq}</b>명</span>`);
+  document.getElementById("tgt-result").classList.remove("hidden");
+}
+
+/* ============================================================
+   매칭 (자동 정규화 + 후보 추천)
+   ============================================================ */
+// 지역 토큰 겹침 비율(공백/구분 무시). 모든 한글 글자 bigram Dice로 비교해
+// "스플라스 리솜" vs "스플라스리솜" 같은 띄어쓰기 차이를 흡수한다.
+function regionScore(a,b){
+  if(!a||!b) return 0.5; // 한쪽이라도 비면 중립
+  return dice(a.replace(/\|/g,""),b.replace(/\|/g,""));
+}
+function autoMatch(){
+  const groups=Object.values(STATE.groups);
+  const used=new Set();
+  STATE.matchMap={};
+  STATE.matchStatus={};
+  // 같은 (리조트,타입,입실일) 묶음으로 후보 인덱싱 — 지역 명칭 차이를 1차 키에서 배제
+  const byRT={};
+  groups.forEach(g=>{const k=g.resort+"§"+g.ntype+"§"+g.in;(byRT[k]=byRT[k]||[]).push(g);});
+
+  // 1차: (리조트,타입,입실일) 정확 일치 → 지역 점수로 best 선택
+  STATE.slots.forEach(s=>{
+    const cands=(byRT[s.resort+"§"+s.ntype+"§"+s.in]||[]).filter(g=>!used.has(g.key));
+    if(!cands.length){STATE.matchMap[s.id]=null;STATE.matchStatus[s.id]="none";return;}
+    let best=cands[0],bs=-1;
+    cands.forEach(g=>{const sc=regionScore(s.rkey,g.rkey);if(sc>bs){bs=sc;best=g;}});
+    // 후보가 하나뿐이거나 지역이 충분히 닮으면 자동, 아니면 추천
+    const status=(cands.length===1||bs>=0.5)?"auto":"sug";
+    STATE.matchMap[s.id]=best.key;STATE.matchStatus[s.id]=status;used.add(best.key);
+  });
+  // 2차: 1차 실패분 → 같은 리조트+입실일에서 타입 유사도 best (추천)
+  STATE.slots.forEach(s=>{
+    if(STATE.matchMap[s.id]) return;
+    let best=null,bestScore=0;
+    groups.forEach(g=>{
+      if(used.has(g.key)||g.resort!==s.resort||g.in!==s.in) return;
+      const sc=dice(s.ntype,g.ntype)*0.7+regionScore(s.rkey,g.rkey)*0.3;
+      if(sc>bestScore){bestScore=sc;best=g;}
+    });
+    if(best && bestScore>=0.4){
+      STATE.matchMap[s.id]=best.key;STATE.matchStatus[s.id]="sug";used.add(best.key);
+    }else{
+      STATE.matchMap[s.id]=null;STATE.matchStatus[s.id]="none";
+    }
+  });
+}
+
+function groupOptionsFor(slot, currentKey){
+  // 후보: 같은 리조트 그룹 + 미사용 우선. 현재 선택 포함.
+  const usedByOther=new Set(Object.entries(STATE.matchMap)
+        .filter(([sid,gk])=>gk && sid!==slot.id).map(([,gk])=>gk));
+  const opts=Object.values(STATE.groups)
+    .filter(g=>g.resort===slot.resort)
+    .map(g=>{
+      const sc=dice(slot.ntype,g.ntype);
+      return {g,sc,taken:usedByOther.has(g.key)};
+    })
+    .sort((a,b)=>b.sc-a.sc);
+  return opts;
+}
+
+function renderMatch(){
+  const norm=x=>String(x||"").toLowerCase().replace(/[\s/().,_·-]+/g,"");
+  const filter=norm(document.getElementById("match-filter").value);
+  const onlyIssue=document.getElementById("only-issue").checked;
+  const t=document.getElementById("match-table");
+  let html="<thead><tr><th>순번</th><th>상태</th><th>리조트</th><th>지역</th><th>타입(객실)</th><th>입실일</th>"
+          +"<th>정원</th><th>매칭된 신청그룹 (신청자수)</th></tr></thead><tbody>";
+  let cAuto=0,cSug=0,cNone=0,cEmpty=0;
+  let rowNo=0;
+  // 어떤 슬롯에든 이미 배정된 신청그룹
+  const usedGroups=new Set(Object.values(STATE.matchMap).filter(Boolean));
+  const slots=STATE.slots.slice().sort(sortSlot);
+  slots.forEach(s=>{
+    const gk=STATE.matchMap[s.id];
+    const g=gk?STATE.groups[gk]:null;
+    const nApp=g?g.sabuns.size:0;
+    let st=STATE.matchStatus[s.id];
+    if(gk && nApp===0) st="empty";
+    if(!gk){
+      // 같은 (리조트,입실일)에 아직 안 쓰인 신청그룹이 있으면 검수 대상(미매칭),
+      // 하나도 없으면 그 날짜에 신청자 자체가 없는 빈 객실(신청없음)
+      const hasSameDate=Object.values(STATE.groups).some(
+        gg=>gg.resort===s.resort && gg.in===s.in && !usedGroups.has(gg.key));
+      st = hasSameDate ? "none" : "empty";
+    }
+    // 통계
+    if(st==="auto")cAuto++;else if(st==="sug")cSug++;else if(st==="empty")cEmpty++;else cNone++;
+    // 필터
+    const hay=norm(s.resort+s.region+s.type+s.in);
+    if(filter && !hay.includes(filter)) return;
+    if(onlyIssue && !filter && (st==="auto"||st==="empty")) return;
+
+    const badge={auto:'<span class="badge b-auto">자동</span>',
+                 sug:'<span class="badge b-sug">추천</span>',
+                 none:'<span class="badge b-none">미매칭</span>',
+                 empty:'<span class="badge b-empty">신청없음</span>'}[st];
+    // 드롭다운
+    const opts=groupOptionsFor(s,gk);
+    let sel=`<select data-slot="${esc(s.id)}"><option value="">— 신청없음(미배정) —</option>`;
+    opts.forEach(o=>{
+      const dateWarn = o.g.in!==s.in ? " ⚠날짜다름("+o.g.in+")" : "";
+      const label=`${esc(o.g.type)} / ${esc(o.g.region)} ${o.g.in}${o.taken?" ⚠중복":""}${dateWarn}`;
+      sel+=`<option value="${esc(o.g.key)}" ${o.g.key===gk?"selected":""}>${label}</option>`;
+    });
+    sel+="</select>";
+    rowNo++;
+    html+=`<tr><td>${rowNo}</td><td>${badge}</td><td>${s.resort}</td><td>${esc(s.region)}</td><td><b>${esc(s.type)}</b></td>`
+        +`<td>${s.in}</td><td>${s.quota}</td><td>${sel} <span class="mini">${nApp?nApp+"명":""}</span></td></tr>`;
+  });
+  t.innerHTML=html+"</tbody>";
+  // summary
+  document.getElementById("match-summary").innerHTML=
+     card("자동 매칭",cAuto,"ok")+card("추천(검수)",cSug,cSug?"warn":"")
+    +card("미매칭",cNone,cNone?"bad":"")+card("신청없음(빈객실)",cEmpty,"");
+  // bind selects
+  t.querySelectorAll("select").forEach(se=>{
+    se.addEventListener("change",e=>{
+      const sid=e.target.getAttribute("data-slot");
+      STATE.matchMap[sid]=e.target.value||null;
+      STATE.matchStatus[sid]=e.target.value?"auto":"none";
+      renderMatch();
+    });
+  });
+}
+function card(k,v,cls){return `<div class="card"><div class="k">${k}</div><div class="v ${cls||""}">${v}</div></div>`;}
+
+document.getElementById("match-filter").addEventListener("input",renderMatch);
+document.getElementById("only-issue").addEventListener("change",renderMatch);
+
+document.getElementById("btn-confirm").addEventListener("click",()=>{
+  // 중복 그룹 사용 체크
+  const seen={},dup=[];
+  Object.entries(STATE.matchMap).forEach(([sid,gk])=>{
+    if(!gk) return;
+    if(seen[gk]) dup.push(gk); else seen[gk]=sid;
+  });
+  const note=document.getElementById("match-note");
+  if(dup.length){
+    note.innerHTML=`<span class="bad-txt">⚠ 같은 신청그룹이 ${dup.length}개 객실에 중복 연결되어 있습니다. 같은 그룹이 여러 객실 정원을 공유하는 게 맞다면 그대로 진행해도 됩니다.</span>`;
+  }else{
+    note.innerHTML=`<span class="ok-txt">✔ 매칭 확정. 추첨을 진행하세요.</span>`;
+  }
+  enableStep("step4");
+  window.scrollTo({top:document.getElementById("step4").offsetTop-20,behavior:"smooth"});
+});
+
+/* ============================================================
+   STEP 4 — 추첨 엔진
+   ============================================================ */
+function secureShuffle(arr){
+  const a=arr.slice();
+  for(let i=a.length-1;i>0;i--){
+    const rnd=crypto.getRandomValues(new Uint32Array(1))[0]/4294967296;
+    const j=Math.floor(rnd*(i+1));
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+  return a;
+}
+function draw(){
+  const won=new Set();           // 사번 (전체 통틀어 1객실)
+  const appByKey={};             // sabun -> chosen app record (for output)
+  const winners=[];              // {slot, app}
+  const slotResults=[];          // {slot, quota, winners:[], filled}
+  // 그룹 -> 슬롯들 (정원 합산: 한 그룹이 여러 슬롯에 연결될 수 있음)
+  // 슬롯 단위로 순회하되, 같은 그룹 풀 공유 → 그룹별 남은 풀 관리
+  const groupPool={}; // gk -> dedup된 사번 배열 (셔플)
+  Object.values(STATE.groups).forEach(g=>{
+    // 사번별 대표 신청건 1개
+    const byS={};
+    g.apps.forEach(a=>{if(!byS[a.sabun]) byS[a.sabun]=a;});
+    groupPool[g.key]=Object.values(byS);
+  });
+
+  // 슬롯을 리조트 순서로 정렬
+  const slots=STATE.slots.slice().sort((a,b)=>{
+    const ai=RESORT_ORDER.indexOf(a.resort),bi=RESORT_ORDER.indexOf(b.resort);
+    if(ai!==bi) return ai-bi;
+    return sortSlot(a,b);
+  });
+
+  // 그룹별 셔플 순서를 1회 생성(리조트 순서 진행 중 동일 그룹 재방문 시 일관)
+  const shuffled={};
+  Object.keys(groupPool).forEach(gk=>{shuffled[gk]=secureShuffle(groupPool[gk]);});
+  const cursor={}; // gk -> 다음 후보 인덱스
+
+  slots.forEach(slot=>{
+    const gk=STATE.matchMap[slot.id];
+    const res={slot,quota:slot.quota,winners:[],filled:0};
+    if(gk && shuffled[gk]){
+      if(cursor[gk]===undefined) cursor[gk]=0;
+      let cnt=0;
+      while(cnt<slot.quota && cursor[gk]<shuffled[gk].length){
+        const cand=shuffled[gk][cursor[gk]++];
+        if(won.has(cand.sabun)) continue; // 이미 다른 데서 당첨
+        won.add(cand.sabun);
+        res.winners.push(cand);
+        winners.push({slot,app:cand});
+        cnt++;
+      }
+      res.filled=res.winners.length;
+    }
+    slotResults.push(res);
+  });
+
+  // 낙첨자: 신청은 했으나 끝까지 미당첨인 고유 인원
+  const allSabun={}; // sabun -> app(any) for name
+  STATE.apps.forEach(a=>{if(!allSabun[a.sabun])allSabun[a.sabun]=a;});
+  const losers=Object.values(allSabun).filter(a=>!won.has(a.sabun));
+
+  // explain ③: 경쟁률 1:1 슬롯(eligible<=quota) & 2건 이상 신청자
+  // eligible = 그 슬롯 그룹의 고유 신청자 수 (제외 전 기준)
+  const oneToOneSlots=[];
+  slotResults.forEach(r=>{
+    const gk=STATE.matchMap[r.slot.id];
+    if(!gk) return;
+    const n=STATE.groups[gk].sabuns.size;
+    if(n>0 && n<=r.quota) oneToOneSlots.push({slot:r.slot,n});
+  });
+  // 1:1 객실에만 한정한 사번별 신청건수 (경쟁 객실 신청은 제외)
+  // 한 그룹이 여러 슬롯에 연결될 수 있으므로 슬롯이 아닌 그룹 단위로 dedupe
+  const oneToOneGroupKeys=new Set();
+  oneToOneSlots.forEach(o=>{const gk=STATE.matchMap[o.slot.id];if(gk)oneToOneGroupKeys.add(gk);});
+  const oneToOneCntBySabun={};
+  const oneToOneAppliedBySabun={}; // sabun -> [신청한 1:1 객실 설명]
+  oneToOneGroupKeys.forEach(gk=>{
+    const g=STATE.groups[gk];
+    const desc=`${g.resort} ${g.region} / ${g.type} (${g.in})`;
+    g.sabuns.forEach(s=>{
+      oneToOneCntBySabun[s]=(oneToOneCntBySabun[s]||0)+1;
+      (oneToOneAppliedBySabun[s]=oneToOneAppliedBySabun[s]||[]).push(desc);
+    });
+  });
+  const mailTargets=Object.keys(oneToOneCntBySabun).filter(s=>oneToOneCntBySabun[s]>=2)
+        .map(s=>({sabun:s,name:(allSabun[s]||{}).name||"",dept:(allSabun[s]||{}).dept||"",
+                  applied:oneToOneCntBySabun[s],appliedList:oneToOneAppliedBySabun[s]||[]}));
+
+  STATE.result={winners,slotResults,losers,oneToOneSlots,mailTargets};
+  renderResult();
+  enableStep("step5");
+}
+
+/* ============================================================
+   STEP 5 — 결과 렌더 / 다운로드
+   ============================================================ */
+function renderResult(){
+  const R=STATE.result;
+  const totalQuota=STATE.slots.reduce((s,x)=>s+x.quota,0);
+  const filled=R.winners.length;
+  const unfilled=totalQuota-filled;
+  document.getElementById("result-summary").innerHTML=
+      card("총 정원",totalQuota,"")
+     +card("당첨",filled,"ok")
+     +card("미충원 자리",unfilled,unfilled?"warn":"")
+     +card("낙첨 인원",R.losers.length,"")
+     +card("선택지메일 대상",R.mailTargets.length,R.mailTargets.length?"warn":"");
+
+  // 탭
+  const tabs=[["win","🏆 당첨자 ("+filled+")"],["unfilled","⚠ 미충원 ("+unfilled+")"],
+              ["mail","✉ 선택지메일 ("+R.mailTargets.length+")"],["lose","❌ 낙첨 ("+R.losers.length+")"]];
+  const tb=document.getElementById("result-tabs");
+  tb.innerHTML=tabs.map((t,i)=>`<div class="tab ${i===0?'active':''}" data-tab="${t[0]}">${t[1]}</div>`).join("");
+  tb.querySelectorAll(".tab").forEach(el=>el.addEventListener("click",()=>{
+    tb.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
+    el.classList.add("active");
+    ["win","unfilled","mail","lose"].forEach(n=>
+      document.getElementById("tab-"+n).classList.toggle("hidden",n!==el.getAttribute("data-tab")));
+  }));
+
+  // 당첨자
+  let h='<div class="scroll"><table><thead><tr><th>순번</th><th>리조트</th><th>지역</th><th>객실타입</th><th>입실일</th>'
+       +'<th>사번</th><th>성명</th><th>부서</th></tr></thead><tbody>';
+  R.winners.slice().sort((a,b)=>sortSlot(a.slot,b.slot)).forEach((w,i)=>{
+    h+=`<tr><td>${i+1}</td><td>${w.slot.resort}</td><td>${esc(w.slot.region)}</td><td>${esc(w.slot.type)}</td>`
+      +`<td>${w.slot.in}</td><td>${esc(w.app.sabun)}</td><td>${esc(w.app.name)}</td><td>${esc(w.app.dept)}</td></tr>`;
+  });
+  document.getElementById("tab-win").innerHTML=h+"</tbody></table></div>";
+
+  // 미충원
+  let u='<div class="scroll"><table><thead><tr><th>순번</th><th>리조트</th><th>지역</th><th>객실타입</th><th>입실일</th>'
+       +'<th>정원</th><th>당첨</th><th>미충원</th><th>사유</th></tr></thead><tbody>';
+  R.slotResults.filter(r=>r.filled<r.quota).sort((a,b)=>sortSlot(a.slot,b.slot)).forEach((r,i)=>{
+    const gk=STATE.matchMap[r.slot.id];
+    const reason=!gk?"신청자 없음(미매칭)":(STATE.groups[gk].sabuns.size===0?"신청자 없음":"신청자 부족/중복당첨 제외");
+    u+=`<tr><td>${i+1}</td><td>${r.slot.resort}</td><td>${esc(r.slot.region)}</td><td>${esc(r.slot.type)}</td><td>${r.slot.in}</td>`
+      +`<td>${r.quota}</td><td>${r.filled}</td><td class="warn-txt">${r.quota-r.filled}</td><td>${reason}</td></tr>`;
+  });
+  document.getElementById("tab-unfilled").innerHTML=u+"</tbody></table></div>";
+
+  // 선택지 메일
+  let m='<p class="note">explain ③: 경쟁률 1:1(본인 외 신청자 없음) 객실 목록에 <b>2건 이상</b> 신청한 구성원 — 선택지 안내 대상입니다(자동 발송 아님).</p>'
+       +'<div class="scroll"><table><thead><tr><th>순번</th><th>사번</th><th>성명</th><th>부서</th><th>1:1 신청건수</th><th>신청 객실(1:1)</th></tr></thead><tbody>';
+  R.mailTargets.sort((a,b)=>b.applied-a.applied).forEach((t,i)=>{
+    const rooms=(t.appliedList||[]).map(x=>
+        `<div class="room-line"><span>${esc(x)}</span>`
+       +`<button type="button" class="copybtn" data-room="${esc(x)}">📋 복사</button></div>`).join("");
+    m+=`<tr><td>${i+1}</td><td>${esc(t.sabun)}</td><td>${esc(t.name)}</td><td>${esc(t.dept)}</td><td>${t.applied}</td><td>${rooms}</td></tr>`;
+  });
+  if(!R.mailTargets.length) m+='<tr><td colspan="6" class="note">해당 대상 없음</td></tr>';
+  document.getElementById("tab-mail").innerHTML=m+"</tbody></table></div>";
+  document.getElementById("tab-mail").querySelectorAll(".copybtn").forEach(b=>
+    b.addEventListener("click",()=>copyRoomAndSearch(b.getAttribute("data-room"))));
+
+  // 낙첨
+  let l='<div class="scroll"><table><thead><tr><th>순번</th><th>사번</th><th>성명</th><th>부서</th></tr></thead><tbody>';
+  R.losers.slice().sort((a,b)=>a.sabun<b.sabun?-1:1).forEach((a,i)=>{
+    l+=`<tr><td>${i+1}</td><td>${esc(a.sabun)}</td><td>${esc(a.name)}</td><td>${esc(a.dept)}</td></tr>`;
+  });
+  document.getElementById("tab-lose").innerHTML=l+"</tbody></table></div>";
+
+  document.getElementById("btn-redraw").disabled=false;
+}
+
+/* 선택지메일 → 매칭검수: 객실 텍스트 복사 + 3단계 검색창 자동 입력/스크롤 */
+function copyRoomAndSearch(text){
+  const fallback=()=>{const ta=document.createElement("textarea");ta.value=text;
+    ta.style.position="fixed";ta.style.opacity="0";document.body.appendChild(ta);
+    ta.select();try{document.execCommand("copy");}catch(e){}document.body.removeChild(ta);};
+  if(navigator.clipboard&&navigator.clipboard.writeText)
+    navigator.clipboard.writeText(text).catch(fallback);
+  else fallback();
+  const inp=document.getElementById("match-filter");
+  inp.value=text;
+  inp.dispatchEvent(new Event("input"));   // 기존 input 리스너 → renderMatch 실행
+  const el=document.getElementById("step3");
+  if(el) window.scrollTo({top:el.offsetTop-20,behavior:"smooth"});
+}
+
+/* ---------- 다운로드 ---------- */
+function downloadSheets(sheets, filename){ // sheets = [{name, rows}]
+  const wb=XLSX.utils.book_new();
+  sheets.forEach(s=>{
+    const ws=XLSX.utils.json_to_sheet(s.rows.length?s.rows:[s.empty||{}]);
+    XLSX.utils.book_append_sheet(wb,ws,s.name);
+  });
+  XLSX.writeFile(wb,filename);
+}
+document.getElementById("btn-dl-all").addEventListener("click",()=>{
+  const R=STATE.result;
+  if(!R){return;}
+  // 당첨자
+  const winRows=R.winners.slice().sort((a,b)=>sortSlot(a.slot,b.slot)).map((w,i)=>({
+    순번:i+1,리조트:w.slot.resort,지역:w.slot.region,객실타입:w.slot.type,입실일:w.slot.in,
+    사번:w.app.sabun,성명:w.app.name,부서:w.app.dept,결과:"당첨"}));
+  // 미충원 (화면 표와 동일한 정렬·사유)
+  const unfilledRows=R.slotResults.filter(r=>r.filled<r.quota)
+    .sort((a,b)=>sortSlot(a.slot,b.slot)).map((r,i)=>{
+      const gk=STATE.matchMap[r.slot.id];
+      const reason=!gk?"신청자 없음(미매칭)":(STATE.groups[gk].sabuns.size===0?"신청자 없음":"신청자 부족/중복당첨 제외");
+      return {순번:i+1,리조트:r.slot.resort,지역:r.slot.region,객실타입:r.slot.type,입실일:r.slot.in,
+              정원:r.quota,당첨:r.filled,미충원:r.quota-r.filled,사유:reason};
+    });
+  // 선택지메일
+  const mailRows=R.mailTargets.map((t,i)=>({순번:i+1,사번:t.sabun,성명:t.name,부서:t.dept,
+    "1:1신청건수":t.applied,"신청객실(1:1)":(t.appliedList||[]).join(" / ")}));
+  // 낙첨
+  const loseRows=R.losers.slice().sort((a,b)=>a.sabun<b.sabun?-1:1)
+    .map((a,i)=>({순번:i+1,사번:a.sabun,성명:a.name,부서:a.dept,결과:"낙첨"}));
+
+  downloadSheets([
+    {name:"당첨자",rows:winRows,empty:{순번:"",리조트:"",지역:"",객실타입:"",입실일:"",사번:"",성명:"",부서:"",결과:""}},
+    {name:"미충원",rows:unfilledRows,empty:{순번:"",리조트:"",지역:"",객실타입:"",입실일:"",정원:"",당첨:"",미충원:"",사유:""}},
+    {name:"선택지메일",rows:mailRows,empty:{순번:"",사번:"",성명:"",부서:"","1:1신청건수":"","신청객실(1:1)":""}},
+    {name:"낙첨",rows:loseRows,empty:{순번:"",사번:"",성명:"",부서:"",결과:""}},
+  ],"추첨_결과.xlsx");
+});
+
+document.getElementById("btn-draw").addEventListener("click",draw);
+document.getElementById("btn-redraw").addEventListener("click",draw);
+
+/* ============================================================
+   파일 업로드 배선
+   ============================================================ */
+function readWorkbook(file,cb){
+  const fr=new FileReader();
+  fr.onload=e=>{
+    try{
+      const wb=XLSX.read(new Uint8Array(e.target.result),{type:"array"});
+      cb(wb);
+    }catch(err){alert("엑셀을 읽지 못했습니다: "+err.message);}
+  };
+  fr.readAsArrayBuffer(file);
+}
+function wireDrop(dropId,inputId,onFile){
+  const drop=document.getElementById(dropId),input=document.getElementById(inputId);
+  input.addEventListener("change",e=>{if(e.target.files[0])onFile(e.target.files[0]);});
+  ["dragenter","dragover"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add("over");}));
+  ["dragleave","drop"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove("over");}));
+  drop.addEventListener("drop",e=>{if(e.dataTransfer.files[0])onFile(e.dataTransfer.files[0]);});
+}
+wireDrop("drop1","file1",f=>readWorkbook(f,parseSource));
+wireDrop("drop2","file2",f=>readWorkbook(f,parseTarget));
+
+// 헤더 단계 칩 클릭 → 해당 섹션으로 스크롤
+document.querySelectorAll(".flow .f").forEach(f=>{
+  f.addEventListener("click",()=>{
+    const el=document.getElementById(f.getAttribute("data-target"));
+    if(el) window.scrollTo({top:el.offsetTop-20,behavior:"smooth"});
+  });
+});
+
+// 맨 위로 버튼: 300px 이상 스크롤 시 노출, 클릭 시 최상단 이동
+const toTop=document.getElementById("to-top");
+window.addEventListener("scroll",()=>{toTop.classList.toggle("show",window.scrollY>300);});
+toTop.addEventListener("click",()=>window.scrollTo({top:0,behavior:"smooth"}));
+
+function enableStep(id){document.getElementById(id).classList.remove("disabled");updateStepStates();}
+/* 표현 전용: 각 스텝의 완료/진행중/대기 상태를 .disabled 여부로 계산해 헤더에 반영
+   (추첨·매칭 로직과 무관) */
+function updateStepStates(){
+  const steps=Array.from(document.querySelectorAll(".step"));
+  steps.forEach((s,i)=>{
+    const wait=s.classList.contains("disabled");
+    const next=steps[i+1];
+    const nextEnabled=next && !next.classList.contains("disabled");
+    let state="wait";
+    if(!wait) state = nextEnabled ? "done" : "current";
+    s.classList.toggle("is-wait",state==="wait");
+    s.classList.toggle("is-current",state==="current");
+    s.classList.toggle("is-done",state==="done");
+    const chip=s.querySelector(".st-state");
+    if(chip) chip.textContent={wait:"대기",current:"진행중",done:"완료"}[state];
+  });
+}
+updateStepStates();
+function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+
+/* ============================================================
+   최상단 탭 — 추첨 / 엑셀 중복 검출 전환
+   ============================================================ */
+(function(){
+  document.querySelectorAll("#toptabs .toptab").forEach(tab=>{
+    tab.addEventListener("click",()=>{
+      const view=tab.getAttribute("data-view");
+      document.querySelectorAll("#toptabs .toptab").forEach(t=>t.classList.toggle("active",t===tab));
+      // flow는 #view-lottery 내부에 있으므로 뷰 토글만으로 함께 숨겨짐
+      ["view-lottery","view-dedup"].forEach(v=>
+        document.getElementById(v).classList.toggle("hidden",v!==view));
+      window.scrollTo({top:0,behavior:"smooth"});
+    });
+  });
+})();
+
+/* ============================================================
+   엑셀 중복 검출 — excel_util.html 이식 (XLSX → XLSXStyle, JSZip 그대로)
+   ============================================================ */
+(function(){
+  // === 컬럼명 설정 (실제 엑셀 헤더 텍스트와 정확히 일치시킬 것) ===
+  const COL_EMP_ID = '사번';
+  const COL_NAME   = '이름';
+  const COL_CHILD  = '자식이름';
+  const HEADER_START = 'A1';   // 헤더(컬럼명) 행의 시작 셀
+
+  document.getElementById('dd-colsSummary').textContent =
+    `${COL_EMP_ID} + ${COL_NAME} + ${COL_CHILD}`;
+  const colsList=`${COL_EMP_ID}, ${COL_NAME}, ${COL_CHILD}`;
+  document.getElementById('dd-colsList').textContent = colsList;
+  document.getElementById('dd-colsList2').textContent = colsList;
+  document.getElementById('dd-headerStartLabel').textContent = HEADER_START;
+  document.getElementById('dd-headerStartHint').textContent = HEADER_START;
+
+  const SAMPLE_DATA = [
+    [COL_EMP_ID, COL_NAME, COL_CHILD, '부서', '입사일'],
+    ['E004', '정수진', '정하늘', '개발팀',   '2024-02-01'],
+    ['E001', '김철수', '김민지', '개발팀',   '2023-01-15'],
+    ['E002', '이영희', '박서연', '디자인팀', '2023-03-22'],
+    ['E003', '박민수', '',       '영업팀',   '2022-11-10'],
+    ['E001', '김철수', '김민호', '개발팀',   '2023-01-15'],
+    ['E005', '한지원', '',       '마케팅팀', '2023-07-08'],
+    ['E002', '이영희', '박서연', '디자인팀', '2023-03-22'],
+    ['E004', '정수진', '정한별', '개발팀',   '2024-02-01'],
+    ['E001', '김철수', '김민지', '개발팀',   '2023-01-15'],
+    ['E006', '최동현', '최도윤', '영업팀',   '2024-05-19']
+  ];
+
+  const fileInfo  = document.getElementById('dd-fileInfo');
+  const btnProcess = document.getElementById('dd-btnProcess');
+  const btnSample  = document.getElementById('dd-btnSample');
+  const resultBox  = document.getElementById('dd-result');
+  let loadedFile = null;
+
+  btnSample.addEventListener('click', () => {
+    const { c: headerCol } = XLSXStyle.utils.decode_cell(HEADER_START);
+    const ws = XLSXStyle.utils.aoa_to_sheet(SAMPLE_DATA, { origin: HEADER_START });
+    const baseWidths = [{ wch: 8 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 14 }];
+    ws['!cols'] = [...Array(headerCol).fill({ wch: 3 }), ...baseWidths];
+    const wb = XLSXStyle.utils.book_new();
+    XLSXStyle.utils.book_append_sheet(wb, ws, 'Sheet1');
+    XLSXStyle.writeFile(wb, 'sample.xlsx');
+  });
+
+  function onFile(file){
+    loadedFile = file || null;
+    resultBox.innerHTML = '';
+    resultBox.className = '';
+    if (loadedFile) {
+      fileInfo.textContent = `📄 ${loadedFile.name} (${(loadedFile.size / 1024).toFixed(1)} KB)`;
+      btnProcess.disabled = false;
+    } else {
+      fileInfo.textContent = '선택된 파일 없음';
+      btnProcess.disabled = true;
+    }
+  }
+  // drwing .drop 패턴으로 배선 (드래그&드롭 + 클릭)
+  (function wireDdDrop(){
+    const drop=document.getElementById('dd-drop'),input=document.getElementById('dd-fileInput');
+    input.addEventListener('change',e=>{ if(e.target.files[0]) onFile(e.target.files[0]); });
+    ["dragenter","dragover"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add("over");}));
+    ["dragleave","drop"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove("over");}));
+    drop.addEventListener("drop",e=>{ if(e.dataTransfer.files[0]) onFile(e.dataTransfer.files[0]); });
+  })();
+
+  btnProcess.addEventListener('click', () => {
+    if (!loadedFile) return;
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        await processWorkbook(e.target.result, loadedFile.name);
+      } catch (err) {
+        showResult('error', '처리 중 오류: ' + err.message);
+      }
+    };
+    reader.onerror = () => showResult('error', '파일을 읽는 데 실패했습니다.');
+    reader.readAsArrayBuffer(loadedFile);
+  });
+
+  const HEADER_STYLE = {
+    font: { bold: true },
+    fill: { patternType: 'solid', fgColor: { rgb: 'E5E7EB' } },
+    alignment: { horizontal: 'center', vertical: 'center' }
+  };
+  const DUP_STYLE = {
+    fill: { patternType: 'solid', fgColor: { rgb: 'FFFF00' } }
+  };
+
+  async function processWorkbook(arrayBuffer, originalName) {
+    let headerCol, headerRow;
+    try {
+      ({ c: headerCol, r: headerRow } = XLSXStyle.utils.decode_cell(HEADER_START));
+      if (!Number.isInteger(headerCol) || !Number.isInteger(headerRow) || headerCol < 0 || headerRow < 0) {
+        throw new Error();
+      }
+    } catch {
+      showResult('error', `HEADER_START 값이 올바른 셀 주소가 아닙니다: '${HEADER_START}'`);
+      return;
+    }
+
+    const wb = XLSXStyle.read(arrayBuffer, { type: 'array' });
+    const firstSheetName = wb.SheetNames[0];
+    const sheet = wb.Sheets[firstSheetName];
+    const data = XLSXStyle.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+
+    if (data.length <= headerRow) {
+      showResult('error', `헤더가 있어야 할 ${HEADER_START} 위치에 데이터가 없습니다.`);
+      return;
+    }
+
+    const header = (data[headerRow] || []).slice(headerCol).map(h => String(h).trim());
+    const empIdIdx = header.indexOf(COL_EMP_ID);
+    const nameIdx  = header.indexOf(COL_NAME);
+    const childIdx = header.indexOf(COL_CHILD);
+
+    const missing = [];
+    if (empIdIdx === -1) missing.push(COL_EMP_ID);
+    if (nameIdx  === -1) missing.push(COL_NAME);
+    if (childIdx === -1) missing.push(COL_CHILD);
+    if (missing.length > 0) {
+      showResult('error', `다음 컬럼을 찾을 수 없습니다: ${missing.join(', ')}\n현재 헤더(${HEADER_START}부터): ${header.join(', ')}`);
+      return;
+    }
+
+    const bodyRows = [];
+    for (let i = headerRow + 1; i < data.length; i++) {
+      const fullRow = data[i] || [];
+      const row = fullRow.slice(headerCol);
+      if (!row || row.every(c => c === '' || c === null || c === undefined)) continue;
+      bodyRows.push(row);
+    }
+
+    const sortedRows = bodyRows.slice().sort((a, b) =>
+      String(a[empIdIdx] ?? '').localeCompare(String(b[empIdIdx] ?? ''), 'ko') ||
+      String(a[nameIdx]  ?? '').localeCompare(String(b[nameIdx]  ?? ''), 'ko') ||
+      String(a[childIdx] ?? '').localeCompare(String(b[childIdx] ?? ''), 'ko')
+    );
+
+    const keyOf = (row) =>
+      String(row[empIdIdx] ?? '').trim() + '||' +
+      String(row[nameIdx]  ?? '').trim() + '||' +
+      String(row[childIdx] ?? '').trim();
+
+    const groups = new Map();
+    sortedRows.forEach((row, idx) => {
+      const key = keyOf(row);
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(idx);
+    });
+
+    const dupRowSet = new Set();
+    let dupGroupCount = 0;
+    for (const [, rows] of groups) {
+      if (rows.length >= 2) {
+        dupGroupCount++;
+        rows.forEach(r => dupRowSet.add(r));
+      }
+    }
+
+    const seenKeys = new Set();
+    const dedupedRows = [];
+    for (const row of sortedRows) {
+      const key = keyOf(row);
+      if (seenKeys.has(key)) continue;
+      seenKeys.add(key);
+      dedupedRows.push(row);
+    }
+    const removedCount = sortedRows.length - dedupedRows.length;
+
+    const originalSheet = buildSheet([header, ...bodyRows],   null, HEADER_START);
+    const dedupedSheet  = buildSheet([header, ...dedupedRows], null, HEADER_START);
+
+    const newWb = XLSXStyle.utils.book_new();
+    XLSXStyle.utils.book_append_sheet(newWb, originalSheet, '원본');
+    XLSXStyle.utils.book_append_sheet(newWb, dedupedSheet, '중복제거');
+
+    const xlsxBuffer = XLSXStyle.write(newWb, { type: 'array', bookType: 'xlsx' });
+    const finalBlob = await injectTabColor(xlsxBuffer, '중복제거', 'FFFF00');
+
+    const outName = '중복표시_' + originalName.replace(/\.(xlsx|xls)$/i, '') + '.xlsx';
+    triggerDownload(finalBlob, outName);
+
+    showResult('success',
+      `완료되었습니다.\n` +
+      `· 헤더 시작: ${HEADER_START}\n` +
+      `· 전체 행: ${bodyRows.length}건\n` +
+      `· 중복 그룹: ${dupGroupCount}개 (${COL_EMP_ID}+${COL_NAME}+${COL_CHILD} 동일)\n` +
+      `· 중복 행: ${dupRowSet.size}건\n` +
+      `· 제거된 행: ${removedCount}건\n` +
+      `· 시트: '원본' / '중복제거'(${dedupedRows.length}행, 탭 노란색)\n` +
+      `· 저장 파일: ${outName}`
+    );
+  }
+
+  async function injectTabColor(xlsxArrayBuffer, targetSheetName, rgb) {
+    const zip = await JSZip.loadAsync(xlsxArrayBuffer);
+
+    const workbookXml = await zip.file('xl/workbook.xml').async('string');
+    const sheetMatch = new RegExp(
+      `<sheet[^>]*name="${escapeForRegex(targetSheetName)}"[^>]*r:id="(rId\\d+)"`
+    ).exec(workbookXml);
+    if (!sheetMatch) throw new Error(`workbook.xml에서 시트 '${targetSheetName}'를 찾지 못함`);
+    const rId = sheetMatch[1];
+
+    const relsXml = await zip.file('xl/_rels/workbook.xml.rels').async('string');
+    const relMatch = new RegExp(
+      `<Relationship[^>]*Id="${rId}"[^>]*Target="([^"]+)"`
+    ).exec(relsXml);
+    if (!relMatch) throw new Error(`workbook.xml.rels에서 ${rId}의 Target을 찾지 못함`);
+
+    const target = relMatch[1].replace(/^\/?xl\//, '');
+    const sheetPath = 'xl/' + target;
+    const sheetXmlFile = zip.file(sheetPath);
+    if (!sheetXmlFile) throw new Error(`${sheetPath} 파일을 찾지 못함`);
+
+    let sheetXml = await sheetXmlFile.async('string');
+    const tabColorTag = `<tabColor rgb="${rgb}"/>`;
+
+    if (/<sheetPr\b[^>]*\/>/.test(sheetXml)) {
+      sheetXml = sheetXml.replace(/<sheetPr\b([^>]*)\/>/, `<sheetPr$1>${tabColorTag}</sheetPr>`);
+    } else if (/<sheetPr\b[^>]*>/.test(sheetXml)) {
+      if (/<tabColor\b[^/]*\/>/.test(sheetXml)) {
+        sheetXml = sheetXml.replace(/<tabColor\b[^/]*\/>/, tabColorTag);
+      } else {
+        sheetXml = sheetXml.replace(/(<sheetPr\b[^>]*>)/, `$1${tabColorTag}`);
+      }
+    } else {
+      sheetXml = sheetXml.replace(/(<worksheet\b[^>]*>)/, `$1<sheetPr>${tabColorTag}</sheetPr>`);
+    }
+
+    zip.file(sheetPath, sheetXml);
+    return zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  }
+
+  function escapeForRegex(str) {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  function triggerDownload(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function buildSheet(rows, dupBodyIndexSet, origin) {
+    const ws = origin
+      ? XLSXStyle.utils.aoa_to_sheet(rows, { origin })
+      : XLSXStyle.utils.aoa_to_sheet(rows);
+    const range = XLSXStyle.utils.decode_range(ws['!ref']);
+    const headerR = range.s.r;
+    const startC  = range.s.c;
+
+    for (let C = startC; C <= range.e.c; C++) {
+      const addr = XLSXStyle.utils.encode_cell({ r: headerR, c: C });
+      if (ws[addr]) ws[addr].s = HEADER_STYLE;
+    }
+
+    if (dupBodyIndexSet && dupBodyIndexSet.size > 0) {
+      for (const bodyIdx of dupBodyIndexSet) {
+        const r = headerR + 1 + bodyIdx;
+        for (let C = startC; C <= range.e.c; C++) {
+          const addr = XLSXStyle.utils.encode_cell({ r, c: C });
+          if (!ws[addr]) ws[addr] = { t: 's', v: '' };
+          ws[addr].s = DUP_STYLE;
+        }
+      }
+    }
+
+    const colWidths = Array(startC).fill({ wch: 3 });
+    for (let C = startC; C <= range.e.c; C++) {
+      let max = 8;
+      for (let R = headerR; R <= range.e.r; R++) {
+        const addr = XLSXStyle.utils.encode_cell({ r: R, c: C });
+        const v = ws[addr] ? String(ws[addr].v ?? '') : '';
+        const len = [...v].reduce((s, ch) => s + (ch.charCodeAt(0) > 127 ? 2 : 1), 0);
+        if (len > max) max = len;
+      }
+      colWidths.push({ wch: Math.min(max + 2, 40) });
+    }
+    ws['!cols'] = colWidths;
+    return ws;
+  }
+
+  function showResult(type, msg) {
+    resultBox.className = 'dd-result ' + type;
+    resultBox.textContent = msg;
+  }
+})();
+</script>
+</body>
+</html>
