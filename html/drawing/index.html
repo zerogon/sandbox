@@ -128,7 +128,7 @@
       </div>
       <div class="filterbar">
         <input type="text" id="match-filter" placeholder="리조트/지역/타입 검색…" />
-        <label class="mini"><input type="checkbox" id="only-issue" /> 검수필요(추천·미매칭)만 보기</label>
+        <label class="mini"><input type="checkbox" id="only-issue" checked /> 검수필요(추천·미매칭)만 보기</label>
       </div>
       <div class="scroll"><table id="match-table"></table></div>
       <div class="row" style="margin-top:14px;">
@@ -160,9 +160,7 @@
     <div class="step-bd">
       <div class="summary" id="result-summary"></div>
       <div class="row" style="margin-bottom:14px;">
-        <button id="btn-dl-win">⬇ 당첨자 (.xlsx)</button>
-        <button class="ghost" id="btn-dl-lose">⬇ 낙첨자 (.xlsx)</button>
-        <button class="ghost" id="btn-dl-mail">⬇ 선택지메일 대상 (.xlsx)</button>
+        <button id="btn-dl-all">⬇ 결과 전체 (.xlsx) — 시트 4개</button>
       </div>
       <div class="tabs" id="result-tabs"></div>
       <div id="tab-win"></div>
@@ -306,11 +304,11 @@ function renderSource(){
   RESORT_ORDER.forEach(r=>{
     if(byResort[r]) chips.insertAdjacentHTML("beforeend",`<span class="chip">${r} <b>${byResort[r]}</b>박</span>`);
   });
-  chips.insertAdjacentHTML("beforeend",`<span class="chip" style="background:var(--accent2);color:#04121f">총 <b>${total}</b>박 · ${STATE.slots.length} 슬롯</span>`);
+  chips.insertAdjacentHTML("beforeend",`<span class="chip" style="background:var(--accent2);color:#04121f">총 <b>${total}</b>박 · 신청 가능 객실 <b>${STATE.slots.length}</b></span>`);
   const t=document.getElementById("src-table");
-  let html="<thead><tr><th>리조트</th><th>지역</th><th>타입</th><th>입실일</th><th>정원</th></tr></thead><tbody>";
-  STATE.slots.slice().sort(sortSlot).forEach(s=>{
-    html+=`<tr><td>${s.resort}</td><td>${esc(s.region)}</td><td>${esc(s.type)}</td><td>${s.in}</td><td>${s.quota}</td></tr>`;
+  let html="<thead><tr><th>순번</th><th>리조트</th><th>지역</th><th>타입</th><th>입실일</th><th>정원</th></tr></thead><tbody>";
+  STATE.slots.slice().sort(sortSlot).forEach((s,i)=>{
+    html+=`<tr><td>${i+1}</td><td>${s.resort}</td><td>${esc(s.region)}</td><td>${esc(s.type)}</td><td>${s.in}</td><td>${s.quota}</td></tr>`;
   });
   t.innerHTML=html+"</tbody>";
   document.getElementById("src-result").classList.remove("hidden");
@@ -439,9 +437,10 @@ function renderMatch(){
   const filter=(document.getElementById("match-filter").value||"").toLowerCase();
   const onlyIssue=document.getElementById("only-issue").checked;
   const t=document.getElementById("match-table");
-  let html="<thead><tr><th>상태</th><th>리조트</th><th>지역</th><th>타입(객실)</th><th>입실일</th>"
+  let html="<thead><tr><th>순번</th><th>상태</th><th>리조트</th><th>지역</th><th>타입(객실)</th><th>입실일</th>"
           +"<th>정원</th><th>매칭된 신청그룹 (신청자수)</th></tr></thead><tbody>";
   let cAuto=0,cSug=0,cNone=0,cEmpty=0;
+  let rowNo=0;
   // 어떤 슬롯에든 이미 배정된 신청그룹
   const usedGroups=new Set(Object.values(STATE.matchMap).filter(Boolean));
   const slots=STATE.slots.slice().sort(sortSlot);
@@ -474,11 +473,12 @@ function renderMatch(){
     let sel=`<select data-slot="${esc(s.id)}"><option value="">— 신청없음(미배정) —</option>`;
     opts.forEach(o=>{
       const dateWarn = o.g.in!==s.in ? " ⚠날짜다름("+o.g.in+")" : "";
-      const label=`${esc(o.g.type)} / ${esc(o.g.region)} ${o.g.in} · ${o.g.sabuns.size}명${o.taken?" ⚠중복":""}${dateWarn}`;
-      sel+=`<option value="${esc(o.g.key)}" ${o.g.key===gk?"selected":""}>${label} (${Math.round(o.sc*100)}%)</option>`;
+      const label=`${esc(o.g.type)} / ${esc(o.g.region)} ${o.g.in}${o.taken?" ⚠중복":""}${dateWarn}`;
+      sel+=`<option value="${esc(o.g.key)}" ${o.g.key===gk?"selected":""}>${label}</option>`;
     });
     sel+="</select>";
-    html+=`<tr><td>${badge}</td><td>${s.resort}</td><td>${esc(s.region)}</td><td>${esc(s.type)}</td>`
+    rowNo++;
+    html+=`<tr><td>${rowNo}</td><td>${badge}</td><td>${s.resort}</td><td>${esc(s.region)}</td><td>${esc(s.type)}</td>`
         +`<td>${s.in}</td><td>${s.quota}</td><td>${sel} <span class="mini">${nApp?nApp+"명":""}</span></td></tr>`;
   });
   t.innerHTML=html+"</tbody>";
@@ -510,7 +510,7 @@ document.getElementById("btn-confirm").addEventListener("click",()=>{
   });
   const note=document.getElementById("match-note");
   if(dup.length){
-    note.innerHTML=`<span class="bad-txt">⚠ 같은 신청그룹이 ${dup.length}개 슬롯에 중복 연결되어 있습니다. 같은 그룹이 여러 객실 정원을 공유하는 게 맞다면 그대로 진행해도 됩니다.</span>`;
+    note.innerHTML=`<span class="bad-txt">⚠ 같은 신청그룹이 ${dup.length}개 객실에 중복 연결되어 있습니다. 같은 그룹이 여러 객실 정원을 공유하는 게 맞다면 그대로 진행해도 됩니다.</span>`;
   }else{
     note.innerHTML=`<span class="ok-txt">✔ 매칭 확정. 추첨을 진행하세요.</span>`;
   }
@@ -595,10 +595,18 @@ function draw(){
   const oneToOneGroupKeys=new Set();
   oneToOneSlots.forEach(o=>{const gk=STATE.matchMap[o.slot.id];if(gk)oneToOneGroupKeys.add(gk);});
   const oneToOneCntBySabun={};
-  oneToOneGroupKeys.forEach(gk=>{STATE.groups[gk].sabuns.forEach(s=>{oneToOneCntBySabun[s]=(oneToOneCntBySabun[s]||0)+1;});});
+  const oneToOneAppliedBySabun={}; // sabun -> [신청한 1:1 객실 설명]
+  oneToOneGroupKeys.forEach(gk=>{
+    const g=STATE.groups[gk];
+    const desc=`${g.resort} ${g.region} / ${g.type} (${g.in})`;
+    g.sabuns.forEach(s=>{
+      oneToOneCntBySabun[s]=(oneToOneCntBySabun[s]||0)+1;
+      (oneToOneAppliedBySabun[s]=oneToOneAppliedBySabun[s]||[]).push(desc);
+    });
+  });
   const mailTargets=Object.keys(oneToOneCntBySabun).filter(s=>oneToOneCntBySabun[s]>=2)
         .map(s=>({sabun:s,name:(allSabun[s]||{}).name||"",dept:(allSabun[s]||{}).dept||"",
-                  applied:oneToOneCntBySabun[s]}));
+                  applied:oneToOneCntBySabun[s],appliedList:oneToOneAppliedBySabun[s]||[]}));
 
   STATE.result={winners,slotResults,losers,oneToOneSlots,mailTargets};
   renderResult();
@@ -633,38 +641,39 @@ function renderResult(){
   }));
 
   // 당첨자
-  let h='<div class="scroll"><table><thead><tr><th>리조트</th><th>지역</th><th>객실타입</th><th>입실일</th>'
+  let h='<div class="scroll"><table><thead><tr><th>순번</th><th>리조트</th><th>지역</th><th>객실타입</th><th>입실일</th>'
        +'<th>사번</th><th>성명</th><th>부서</th></tr></thead><tbody>';
-  R.winners.slice().sort((a,b)=>sortSlot(a.slot,b.slot)).forEach(w=>{
-    h+=`<tr><td>${w.slot.resort}</td><td>${esc(w.slot.region)}</td><td>${esc(w.slot.type)}</td>`
+  R.winners.slice().sort((a,b)=>sortSlot(a.slot,b.slot)).forEach((w,i)=>{
+    h+=`<tr><td>${i+1}</td><td>${w.slot.resort}</td><td>${esc(w.slot.region)}</td><td>${esc(w.slot.type)}</td>`
       +`<td>${w.slot.in}</td><td>${esc(w.app.sabun)}</td><td>${esc(w.app.name)}</td><td>${esc(w.app.dept)}</td></tr>`;
   });
   document.getElementById("tab-win").innerHTML=h+"</tbody></table></div>";
 
   // 미충원
-  let u='<div class="scroll"><table><thead><tr><th>리조트</th><th>지역</th><th>객실타입</th><th>입실일</th>'
+  let u='<div class="scroll"><table><thead><tr><th>순번</th><th>리조트</th><th>지역</th><th>객실타입</th><th>입실일</th>'
        +'<th>정원</th><th>당첨</th><th>미충원</th><th>사유</th></tr></thead><tbody>';
-  R.slotResults.filter(r=>r.filled<r.quota).sort((a,b)=>sortSlot(a.slot,b.slot)).forEach(r=>{
+  R.slotResults.filter(r=>r.filled<r.quota).sort((a,b)=>sortSlot(a.slot,b.slot)).forEach((r,i)=>{
     const gk=STATE.matchMap[r.slot.id];
     const reason=!gk?"신청자 없음(미매칭)":(STATE.groups[gk].sabuns.size===0?"신청자 없음":"신청자 부족/중복당첨 제외");
-    u+=`<tr><td>${r.slot.resort}</td><td>${esc(r.slot.region)}</td><td>${esc(r.slot.type)}</td><td>${r.slot.in}</td>`
+    u+=`<tr><td>${i+1}</td><td>${r.slot.resort}</td><td>${esc(r.slot.region)}</td><td>${esc(r.slot.type)}</td><td>${r.slot.in}</td>`
       +`<td>${r.quota}</td><td>${r.filled}</td><td class="warn-txt">${r.quota-r.filled}</td><td>${reason}</td></tr>`;
   });
   document.getElementById("tab-unfilled").innerHTML=u+"</tbody></table></div>";
 
   // 선택지 메일
   let m='<p class="note">explain ③: 경쟁률 1:1(본인 외 신청자 없음) 객실 목록에 <b>2건 이상</b> 신청한 구성원 — 선택지 안내 대상입니다(자동 발송 아님).</p>'
-       +'<div class="scroll"><table><thead><tr><th>사번</th><th>성명</th><th>부서</th><th>1:1 신청건수</th></tr></thead><tbody>';
-  R.mailTargets.sort((a,b)=>b.applied-a.applied).forEach(t=>{
-    m+=`<tr><td>${esc(t.sabun)}</td><td>${esc(t.name)}</td><td>${esc(t.dept)}</td><td>${t.applied}</td></tr>`;
+       +'<div class="scroll"><table><thead><tr><th>순번</th><th>사번</th><th>성명</th><th>부서</th><th>1:1 신청건수</th><th>신청 객실(1:1)</th></tr></thead><tbody>';
+  R.mailTargets.sort((a,b)=>b.applied-a.applied).forEach((t,i)=>{
+    const applied=(t.appliedList||[]).map(x=>esc(x)).join("<br>");
+    m+=`<tr><td>${i+1}</td><td>${esc(t.sabun)}</td><td>${esc(t.name)}</td><td>${esc(t.dept)}</td><td>${t.applied}</td><td>${applied}</td></tr>`;
   });
-  if(!R.mailTargets.length) m+='<tr><td colspan="4" class="note">해당 대상 없음</td></tr>';
+  if(!R.mailTargets.length) m+='<tr><td colspan="6" class="note">해당 대상 없음</td></tr>';
   document.getElementById("tab-mail").innerHTML=m+"</tbody></table></div>";
 
   // 낙첨
-  let l='<div class="scroll"><table><thead><tr><th>사번</th><th>성명</th><th>부서</th></tr></thead><tbody>';
-  R.losers.slice().sort((a,b)=>a.sabun<b.sabun?-1:1).forEach(a=>{
-    l+=`<tr><td>${esc(a.sabun)}</td><td>${esc(a.name)}</td><td>${esc(a.dept)}</td></tr>`;
+  let l='<div class="scroll"><table><thead><tr><th>순번</th><th>사번</th><th>성명</th><th>부서</th></tr></thead><tbody>';
+  R.losers.slice().sort((a,b)=>a.sabun<b.sabun?-1:1).forEach((a,i)=>{
+    l+=`<tr><td>${i+1}</td><td>${esc(a.sabun)}</td><td>${esc(a.name)}</td><td>${esc(a.dept)}</td></tr>`;
   });
   document.getElementById("tab-lose").innerHTML=l+"</tbody></table></div>";
 
@@ -672,25 +681,42 @@ function renderResult(){
 }
 
 /* ---------- 다운로드 ---------- */
-function downloadSheet(rows, filename, sheetName){
-  const ws=XLSX.utils.json_to_sheet(rows);
+function downloadSheets(sheets, filename){ // sheets = [{name, rows}]
   const wb=XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb,ws,sheetName||"Sheet1");
+  sheets.forEach(s=>{
+    const ws=XLSX.utils.json_to_sheet(s.rows.length?s.rows:[s.empty||{}]);
+    XLSX.utils.book_append_sheet(wb,ws,s.name);
+  });
   XLSX.writeFile(wb,filename);
 }
-document.getElementById("btn-dl-win").addEventListener("click",()=>{
-  const rows=STATE.result.winners.slice().sort((a,b)=>sortSlot(a.slot,b.slot)).map(w=>({
-    리조트:w.slot.resort,지역:w.slot.region,객실타입:w.slot.type,입실일:w.slot.in,
+document.getElementById("btn-dl-all").addEventListener("click",()=>{
+  const R=STATE.result;
+  if(!R){return;}
+  // 당첨자
+  const winRows=R.winners.slice().sort((a,b)=>sortSlot(a.slot,b.slot)).map((w,i)=>({
+    순번:i+1,리조트:w.slot.resort,지역:w.slot.region,객실타입:w.slot.type,입실일:w.slot.in,
     사번:w.app.sabun,성명:w.app.name,부서:w.app.dept,결과:"당첨"}));
-  downloadSheet(rows,"추첨_당첨자.xlsx","당첨자");
-});
-document.getElementById("btn-dl-lose").addEventListener("click",()=>{
-  const rows=STATE.result.losers.map(a=>({사번:a.sabun,성명:a.name,부서:a.dept,결과:"낙첨"}));
-  downloadSheet(rows,"추첨_낙첨자.xlsx","낙첨자");
-});
-document.getElementById("btn-dl-mail").addEventListener("click",()=>{
-  const rows=STATE.result.mailTargets.map(t=>({사번:t.sabun,성명:t.name,부서:t.dept,"1:1신청건수":t.applied}));
-  downloadSheet(rows.length?rows:[{사번:"",성명:"",부서:"","1:1신청건수":""}],"선택지메일_대상.xlsx","선택지메일");
+  // 미충원 (화면 표와 동일한 정렬·사유)
+  const unfilledRows=R.slotResults.filter(r=>r.filled<r.quota)
+    .sort((a,b)=>sortSlot(a.slot,b.slot)).map((r,i)=>{
+      const gk=STATE.matchMap[r.slot.id];
+      const reason=!gk?"신청자 없음(미매칭)":(STATE.groups[gk].sabuns.size===0?"신청자 없음":"신청자 부족/중복당첨 제외");
+      return {순번:i+1,리조트:r.slot.resort,지역:r.slot.region,객실타입:r.slot.type,입실일:r.slot.in,
+              정원:r.quota,당첨:r.filled,미충원:r.quota-r.filled,사유:reason};
+    });
+  // 선택지메일
+  const mailRows=R.mailTargets.map((t,i)=>({순번:i+1,사번:t.sabun,성명:t.name,부서:t.dept,
+    "1:1신청건수":t.applied,"신청객실(1:1)":(t.appliedList||[]).join(" / ")}));
+  // 낙첨
+  const loseRows=R.losers.slice().sort((a,b)=>a.sabun<b.sabun?-1:1)
+    .map((a,i)=>({순번:i+1,사번:a.sabun,성명:a.name,부서:a.dept,결과:"낙첨"}));
+
+  downloadSheets([
+    {name:"당첨자",rows:winRows,empty:{순번:"",리조트:"",지역:"",객실타입:"",입실일:"",사번:"",성명:"",부서:"",결과:""}},
+    {name:"미충원",rows:unfilledRows,empty:{순번:"",리조트:"",지역:"",객실타입:"",입실일:"",정원:"",당첨:"",미충원:"",사유:""}},
+    {name:"선택지메일",rows:mailRows,empty:{순번:"",사번:"",성명:"",부서:"","1:1신청건수":"","신청객실(1:1)":""}},
+    {name:"낙첨",rows:loseRows,empty:{순번:"",사번:"",성명:"",부서:"",결과:""}},
+  ],"추첨_결과.xlsx");
 });
 
 document.getElementById("btn-draw").addEventListener("click",draw);
