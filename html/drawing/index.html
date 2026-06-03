@@ -7,64 +7,114 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
   :root{
-    --bg:#0f172a; --panel:#1e293b; --panel2:#27364d; --line:#334155;
-    --text:#e2e8f0; --muted:#94a3b8; --accent:#38bdf8; --accent2:#0ea5e9;
-    --ok:#22c55e; --warn:#f59e0b; --bad:#ef4444; --chip:#475569;
+    --bg:#f1f5f9; --panel:#ffffff; --panel2:#f8fafc; --line:#e2e8f0;
+    --text:#1e293b; --muted:#64748b; --accent:#2563eb; --accent2:#3b82f6;
+    --ok:#16a34a; --warn:#d97706; --bad:#dc2626; --chip:#eef2f7;
+    --shadow:0 1px 2px rgba(15,23,42,.06),0 1px 3px rgba(15,23,42,.08);
+    --shadow-hover:0 4px 12px rgba(37,99,235,.12);
   }
   *{box-sizing:border-box;}
   body{margin:0;font-family:"Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;
-       background:var(--bg);color:var(--text);line-height:1.5;}
-  header{padding:22px 28px;border-bottom:1px solid var(--line);background:linear-gradient(90deg,#0b1224,#15233f);}
-  header h1{margin:0;font-size:21px;}
-  header p{margin:4px 0 0;color:var(--muted);font-size:13px;}
-  main{max-width:1200px;margin:0 auto;padding:24px 20px 80px;}
-  .step{background:var(--panel);border:1px solid var(--line);border-radius:12px;margin-bottom:20px;overflow:hidden;}
-  .step.disabled{opacity:.45;pointer-events:none;}
-  .step-hd{display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--line);}
-  .step-hd .num{width:28px;height:28px;border-radius:50%;background:var(--accent2);color:#04121f;
-       display:flex;align-items:center;justify-content:center;font-weight:700;flex:0 0 auto;}
-  .step-hd h2{margin:0;font-size:16px;}
+       background:var(--bg);color:var(--text);line-height:1.5;
+       -webkit-font-smoothing:antialiased;}
+  header{padding:22px 28px;border-bottom:1px solid var(--line);background:var(--panel);}
+  header h1{margin:0;font-size:21px;font-weight:700;letter-spacing:-.01em;}
+  /* 헤더 단계 요약 */
+  .flow{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:10px;
+        color:var(--muted);font-size:12.5px;}
+  .flow .f{display:inline-flex;align-items:center;gap:6px;padding:4px 11px;border-radius:20px;
+           background:var(--panel2);border:1px solid var(--line);cursor:pointer;transition:.15s;}
+  .flow .f:hover{border-color:var(--accent);color:var(--accent);background:#eff6ff;}
+  .flow .f .n{display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;
+              border-radius:50%;background:#dbeafe;color:var(--accent);font-size:10.5px;font-weight:700;}
+  .flow .arr{color:#cbd5e1;font-size:12px;}
+  main{max-width:1180px;margin:0 auto;padding:28px 20px 80px;}
+  .step{background:var(--panel);border:1px solid var(--line);border-radius:14px;margin-bottom:18px;
+        overflow:hidden;box-shadow:var(--shadow);transition:opacity .2s, box-shadow .2s;}
+  .step.disabled{opacity:.55;pointer-events:none;box-shadow:none;}
+  .step.is-current{box-shadow:0 0 0 2px rgba(37,99,235,.18),var(--shadow);}
+  .step-hd{display:flex;align-items:center;gap:13px;padding:16px 20px;border-bottom:1px solid var(--line);}
+  .step-hd .num{width:30px;height:30px;border-radius:50%;background:#e2e8f0;color:var(--muted);
+       display:flex;align-items:center;justify-content:center;font-weight:700;flex:0 0 auto;
+       font-size:14px;transition:.2s;}
+  .step.is-current .num{background:var(--accent);color:#fff;box-shadow:0 0 0 4px rgba(37,99,235,.15);}
+  .step.is-done .num{background:var(--ok);color:#fff;}
+  .step.is-done .num::after{content:"✓";}
+  .step.is-done .num .nlabel{display:none;}
+  .step-hd h2{margin:0;font-size:16px;font-weight:700;}
   .step-hd .sub{color:var(--muted);font-size:12px;font-weight:400;}
+  /* 헤더 우측 상태 칩 */
+  .st-state{margin-left:auto;font-size:11.5px;font-weight:600;padding:4px 11px;border-radius:20px;
+            white-space:nowrap;}
+  .is-wait .st-state{background:var(--panel2);color:var(--muted);border:1px solid var(--line);}
+  .is-current .st-state{background:#dbeafe;color:var(--accent);}
+  .is-done .st-state{background:#dcfce7;color:#15803d;}
+  .st-state::before{margin-right:5px;}
+  .is-wait .st-state::before{content:"○";}
+  .is-current .st-state::before{content:"●";}
+  .is-done .st-state::before{content:"✓";}
   .step-bd{padding:18px 20px;}
-  .drop{border:2px dashed var(--line);border-radius:10px;padding:26px;text-align:center;cursor:pointer;
-        transition:.15s;background:var(--panel2);}
-  .drop:hover,.drop.over{border-color:var(--accent);background:#223150;}
+  .drop{display:block;border:2px dashed var(--line);border-radius:12px;padding:30px;text-align:center;
+        cursor:pointer;background:var(--panel2);
+        transition:border-color .15s, background-color .15s, box-shadow .15s;}
+  .drop:hover,.drop.over{border-color:var(--accent);background:#eff6ff;box-shadow:var(--shadow-hover);}
+  .drop.over{border-style:solid;}
   .drop input{display:none;}
-  .drop .hint{color:var(--muted);font-size:13px;margin-top:6px;}
-  button{font-family:inherit;font-size:14px;border:0;border-radius:8px;padding:10px 18px;cursor:pointer;
-         background:var(--accent2);color:#04121f;font-weight:700;transition:.15s;}
-  button:hover{filter:brightness(1.1);}
-  button.ghost{background:transparent;border:1px solid var(--line);color:var(--text);font-weight:500;}
-  button.ghost:hover{border-color:var(--accent);}
-  button:disabled{opacity:.4;cursor:not-allowed;}
+  .drop .big{font-size:14px;}
+  .drop .big b{color:var(--text);}
+  .drop .hint{color:var(--muted);font-size:12.5px;margin-top:7px;}
+  code{background:#eef2f7;border:1px solid var(--line);border-radius:5px;padding:1px 6px;
+       font-size:12px;color:#334155;}
+  button{font-family:inherit;font-size:14px;border:0;border-radius:9px;padding:10px 18px;cursor:pointer;
+         background:var(--accent);color:#fff;font-weight:600;transition:filter .15s, box-shadow .15s;
+         box-shadow:var(--shadow);}
+  button:hover{filter:brightness(.95);box-shadow:var(--shadow-hover);}
+  button.ghost{background:var(--panel);border:1px solid var(--line);color:var(--text);font-weight:500;
+               box-shadow:none;}
+  button.ghost:hover{border-color:var(--accent);color:var(--accent);filter:none;box-shadow:none;}
+  button:disabled{opacity:.4;cursor:not-allowed;filter:none;box-shadow:none;}
+  .to-top{position:fixed;right:24px;bottom:24px;width:46px;height:46px;border-radius:50%;
+          padding:0;font-size:20px;display:flex;align-items:center;justify-content:center;
+          background:var(--accent);color:#fff;box-shadow:var(--shadow-hover);z-index:50;
+          opacity:0;visibility:hidden;transform:translateY(8px);
+          transition:opacity .2s, transform .2s, visibility .2s;}
+  .to-top.show{opacity:1;visibility:visible;transform:translateY(0);}
   .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
   .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;}
-  .chip{background:var(--chip);border-radius:20px;padding:5px 13px;font-size:13px;}
-  .chip b{color:#fff;}
+  .chip{background:var(--chip);border:1px solid var(--line);border-radius:20px;padding:5px 13px;font-size:13px;color:var(--muted);}
+  .chip b{color:var(--text);}
+  .chip.total{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600;}
+  .chip.total b{color:#fff;}
   table{width:100%;border-collapse:collapse;font-size:13px;}
-  th,td{padding:7px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;}
-  th{color:var(--muted);font-weight:600;position:sticky;top:0;background:var(--panel);z-index:1;}
-  .scroll{max-height:430px;overflow:auto;border:1px solid var(--line);border-radius:8px;margin-top:12px;}
+  th,td{padding:8px 11px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;}
+  th{color:var(--muted);font-weight:600;position:sticky;top:0;background:var(--panel2);z-index:1;}
+  tbody tr:hover{background:#f8fbff;}
+  .scroll{max-height:430px;overflow:auto;border:1px solid var(--line);border-radius:10px;margin-top:12px;}
   .badge{font-size:11px;padding:2px 8px;border-radius:12px;font-weight:700;white-space:nowrap;}
-  .b-auto{background:#15351f;color:#4ade80;}
-  .b-sug{background:#3a2e10;color:#fbbf24;}
-  .b-none{background:#3a1414;color:#f87171;}
-  .b-empty{background:#293548;color:#94a3b8;}
-  select{font-family:inherit;font-size:12px;background:var(--panel2);color:var(--text);
-         border:1px solid var(--line);border-radius:6px;padding:5px 7px;max-width:340px;}
+  .b-auto{background:#dcfce7;color:#15803d;}
+  .b-sug{background:#fef3c7;color:#b45309;}
+  .b-none{background:#fee2e2;color:#b91c1c;}
+  .b-empty{background:#eef2f7;color:#64748b;}
+  select{font-family:inherit;font-size:12px;font-weight:600;background:var(--panel);color:var(--text);
+         border:1px solid var(--line);border-radius:7px;padding:6px 8px;max-width:340px;transition:border-color .15s, box-shadow .15s;}
+  select option{font-weight:600;}
+  select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.15);}
   .note{font-size:12px;color:var(--muted);margin-top:8px;}
-  .summary{display:flex;gap:18px;flex-wrap:wrap;margin:4px 0 14px;}
-  .card{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px 16px;min-width:120px;}
+  .summary{display:flex;gap:14px;flex-wrap:wrap;margin:4px 0 14px;}
+  .card{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:13px 17px;min-width:120px;}
   .card .k{color:var(--muted);font-size:12px;}
   .card .v{font-size:22px;font-weight:700;}
   .v.ok{color:var(--ok);} .v.warn{color:var(--warn);} .v.bad{color:var(--bad);}
   .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;}
-  .tab{padding:7px 14px;border-radius:8px 8px 0 0;background:var(--panel2);cursor:pointer;font-size:13px;border:1px solid var(--line);border-bottom:none;}
-  .tab.active{background:var(--accent2);color:#04121f;font-weight:700;}
+  .tab{padding:8px 15px;border-radius:9px 9px 0 0;background:var(--panel2);cursor:pointer;font-size:13px;
+       border:1px solid var(--line);border-bottom:none;color:var(--muted);transition:.15s;}
+  .tab:hover{color:var(--text);}
+  .tab.active{background:var(--accent);color:#fff;font-weight:700;border-color:var(--accent);}
   .hidden{display:none;}
-  .filterbar{display:flex;gap:10px;align-items:center;margin-bottom:8px;flex-wrap:wrap;}
-  .filterbar input[type=text]{background:var(--panel2);border:1px solid var(--line);color:var(--text);
-       border-radius:6px;padding:7px 10px;font-size:13px;min-width:200px;}
+  .filterbar{display:flex;gap:10px;align-items:center;margin-top:16px;margin-bottom:8px;flex-wrap:wrap;}
+  .filterbar input[type=text]{background:var(--panel);border:1px solid var(--line);color:var(--text);
+       border-radius:7px;padding:8px 11px;font-size:13px;min-width:220px;transition:border-color .15s, box-shadow .15s;}
+  .filterbar input[type=text]:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.15);}
   .ok-txt{color:var(--ok);} .warn-txt{color:var(--warn);} .bad-txt{color:var(--bad);}
   .legend{font-size:12px;color:var(--muted);display:flex;gap:14px;flex-wrap:wrap;margin-top:6px;}
   .mini{font-size:11px;color:var(--muted);}
@@ -74,19 +124,26 @@
 <body>
 <header>
   <h1>🏝️ 휴양지 랜덤 추첨</h1>
-  <p>① 객실 LIST(정원) 업로드 → ② 신청명단 업로드 → ③ 매칭 검수 → ④ 추첨 → ⑤ 결과/다운로드</p>
+  <div class="flow">
+    <span class="f" data-target="step1"><span class="n">1</span> 객실 LIST</span><span class="arr">→</span>
+    <span class="f" data-target="step2"><span class="n">2</span> 신청명단</span><span class="arr">→</span>
+    <span class="f" data-target="step3"><span class="n">3</span> 매칭 검수</span><span class="arr">→</span>
+    <span class="f" data-target="step4"><span class="n">4</span> 추첨</span><span class="arr">→</span>
+    <span class="f" data-target="step5"><span class="n">5</span> 결과/다운로드</span>
+  </div>
 </header>
 <main>
 
   <!-- STEP 1 -->
   <section class="step" id="step1">
-    <div class="step-hd"><span class="num">1</span>
+    <div class="step-hd"><span class="num"><span class="nlabel">1</span></span>
       <div><h2>객실 LIST 업로드 <span class="sub">— source.xlsx (객실별 추첨 정원)</span></h2></div>
+      <span class="st-state"></span>
     </div>
     <div class="step-bd">
       <label class="drop" id="drop1">
         <input type="file" id="file1" accept=".xlsx,.xls" />
-        <div>📂 <b>객실 LIST 엑셀</b>을 끌어다 놓거나 클릭해서 선택</div>
+        <div class="big">📂 <b>객실 LIST 엑셀</b>을 끌어다 놓거나 클릭해서 선택</div>
         <div class="hint">시트 <code>객실 LIST</code>의 객실 한 행 = 당첨 1자리(정원)로 계산합니다.</div>
       </label>
       <div id="src-result" class="hidden">
@@ -98,13 +155,14 @@
 
   <!-- STEP 2 -->
   <section class="step disabled" id="step2">
-    <div class="step-hd"><span class="num">2</span>
+    <div class="step-hd"><span class="num"><span class="nlabel">2</span></span>
       <div><h2>신청명단 업로드 <span class="sub">— target.xlsx (첫 시트만 사용)</span></h2></div>
+      <span class="st-state"></span>
     </div>
     <div class="step-bd">
       <label class="drop" id="drop2">
         <input type="file" id="file2" accept=".xlsx,.xls" />
-        <div>📂 <b>신청명단 엑셀</b>을 끌어다 놓거나 클릭해서 선택</div>
+        <div class="big">📂 <b>신청명단 엑셀</b>을 끌어다 놓거나 클릭해서 선택</div>
         <div class="hint">첫 번째 시트(예: <code>휴양소 조회처리_0410</code>)만 사용합니다. 다른 시트는 무시.</div>
       </label>
       <div id="tgt-result" class="hidden">
@@ -115,8 +173,9 @@
 
   <!-- STEP 3 -->
   <section class="step disabled" id="step3">
-    <div class="step-hd"><span class="num">3</span>
+    <div class="step-hd"><span class="num"><span class="nlabel">3</span></span>
       <div><h2>매칭 검수 <span class="sub">— 객실(정원) ↔ 신청 그룹 연결</span></h2></div>
+      <span class="st-state"></span>
     </div>
     <div class="step-bd">
       <div class="summary" id="match-summary"></div>
@@ -140,8 +199,9 @@
 
   <!-- STEP 4 -->
   <section class="step disabled" id="step4">
-    <div class="step-hd"><span class="num">4</span>
+    <div class="step-hd"><span class="num"><span class="nlabel">4</span></span>
       <div><h2>추첨 실행 <span class="sub">— 호반 → 롯데 → 대명 → 오크밸리 → 한화 / 1인 최대 1객실 / 완전 무작위</span></h2></div>
+      <span class="st-state"></span>
     </div>
     <div class="step-bd">
       <div class="row">
@@ -154,8 +214,9 @@
 
   <!-- STEP 5 -->
   <section class="step disabled" id="step5">
-    <div class="step-hd"><span class="num">5</span>
+    <div class="step-hd"><span class="num"><span class="nlabel">5</span></span>
       <div><h2>결과 / 리포트 <span class="sub">— 다운로드</span></h2></div>
+      <span class="st-state"></span>
     </div>
     <div class="step-bd">
       <div class="summary" id="result-summary"></div>
@@ -171,6 +232,8 @@
   </section>
 
 </main>
+
+<button id="to-top" class="to-top" aria-label="맨 위로" title="맨 위로">↑</button>
 
 <script>
 "use strict";
@@ -304,7 +367,7 @@ function renderSource(){
   RESORT_ORDER.forEach(r=>{
     if(byResort[r]) chips.insertAdjacentHTML("beforeend",`<span class="chip">${r} <b>${byResort[r]}</b>박</span>`);
   });
-  chips.insertAdjacentHTML("beforeend",`<span class="chip" style="background:var(--accent2);color:#04121f">총 <b>${total}</b>박 · 신청 가능 객실 <b>${STATE.slots.length}</b></span>`);
+  chips.insertAdjacentHTML("beforeend",`<span class="chip total">총 <b>${total}</b>박 · 신청 가능 객실 <b>${STATE.slots.length}</b></span>`);
   const t=document.getElementById("src-table");
   let html="<thead><tr><th>순번</th><th>리조트</th><th>지역</th><th>타입</th><th>입실일</th><th>정원</th></tr></thead><tbody>";
   STATE.slots.slice().sort(sortSlot).forEach((s,i)=>{
@@ -370,7 +433,7 @@ function renderTargetChips(){
   const chips=document.getElementById("tgt-chips");
   chips.innerHTML="";
   RESORT_ORDER.forEach(r=>{if(byResort[r])chips.insertAdjacentHTML("beforeend",`<span class="chip">${r} <b>${byResort[r]}</b>건</span>`);});
-  chips.insertAdjacentHTML("beforeend",`<span class="chip" style="background:var(--accent2);color:#04121f">총 <b>${STATE.apps.length}</b>신청건 · <b>${uniq}</b>명</span>`);
+  chips.insertAdjacentHTML("beforeend",`<span class="chip total">총 <b>${STATE.apps.length}</b>신청건 · <b>${uniq}</b>명</span>`);
   document.getElementById("tgt-result").classList.remove("hidden");
 }
 
@@ -478,7 +541,7 @@ function renderMatch(){
     });
     sel+="</select>";
     rowNo++;
-    html+=`<tr><td>${rowNo}</td><td>${badge}</td><td>${s.resort}</td><td>${esc(s.region)}</td><td>${esc(s.type)}</td>`
+    html+=`<tr><td>${rowNo}</td><td>${badge}</td><td>${s.resort}</td><td>${esc(s.region)}</td><td><b>${esc(s.type)}</b></td>`
         +`<td>${s.in}</td><td>${s.quota}</td><td>${sel} <span class="mini">${nApp?nApp+"명":""}</span></td></tr>`;
   });
   t.innerHTML=html+"</tbody>";
@@ -745,7 +808,38 @@ function wireDrop(dropId,inputId,onFile){
 wireDrop("drop1","file1",f=>readWorkbook(f,parseSource));
 wireDrop("drop2","file2",f=>readWorkbook(f,parseTarget));
 
-function enableStep(id){document.getElementById(id).classList.remove("disabled");}
+// 헤더 단계 칩 클릭 → 해당 섹션으로 스크롤
+document.querySelectorAll(".flow .f").forEach(f=>{
+  f.addEventListener("click",()=>{
+    const el=document.getElementById(f.getAttribute("data-target"));
+    if(el) window.scrollTo({top:el.offsetTop-20,behavior:"smooth"});
+  });
+});
+
+// 맨 위로 버튼: 300px 이상 스크롤 시 노출, 클릭 시 최상단 이동
+const toTop=document.getElementById("to-top");
+window.addEventListener("scroll",()=>{toTop.classList.toggle("show",window.scrollY>300);});
+toTop.addEventListener("click",()=>window.scrollTo({top:0,behavior:"smooth"}));
+
+function enableStep(id){document.getElementById(id).classList.remove("disabled");updateStepStates();}
+/* 표현 전용: 각 스텝의 완료/진행중/대기 상태를 .disabled 여부로 계산해 헤더에 반영
+   (추첨·매칭 로직과 무관) */
+function updateStepStates(){
+  const steps=Array.from(document.querySelectorAll(".step"));
+  steps.forEach((s,i)=>{
+    const wait=s.classList.contains("disabled");
+    const next=steps[i+1];
+    const nextEnabled=next && !next.classList.contains("disabled");
+    let state="wait";
+    if(!wait) state = nextEnabled ? "done" : "current";
+    s.classList.toggle("is-wait",state==="wait");
+    s.classList.toggle("is-current",state==="current");
+    s.classList.toggle("is-done",state==="done");
+    const chip=s.querySelector(".st-state");
+    if(chip) chip.textContent={wait:"대기",current:"진행중",done:"완료"}[state];
+  });
+}
+updateStepStates();
 function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
 </script>
 </body>
