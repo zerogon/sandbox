@@ -460,19 +460,12 @@ function sortSlot(a,b){
 function parseTarget(wb){
   const ws = wb.Sheets[wb.SheetNames[0]]; // 첫 시트 강제
   const rows = XLSX.utils.sheet_to_json(ws,{header:1,defval:null,raw:true});
-  // 헤더 행 동적 탐색: '사번' 과 '리조트'(또는 '성명')가 함께 있는 행
-  // (시작 셀이 A1이든 B1이든, 앞에 빈 행/열이 있어도 인식되도록)
-  let h=0;
-  for(let i=0;i<rows.length;i++){
-    const line=(rows[i]||[]).map(c=>String(c||""));
-    if(line.some(c=>c.includes("사번")) && line.some(c=>c.includes("리조트")||c.includes("성명"))){h=i;break;}
-  }
-  const hdr=(rows[h]||[]).map(c=>String(c||"").replace(/\s/g,""));
+  const hdr=(rows[0]||[]).map(c=>String(c||"").replace(/\s/g,""));
   const col=name=>hdr.findIndex(c=>c.includes(name));
   const cSabun=col("사번"),cName=col("성명"),cDeptC=col("부서코드"),cDept=col("부서명"),
         cResort=col("리조트"),cRegion=col("지역"),cType=col("룸타입"),cIn=col("입실일");
   const apps=[];
-  for(let i=h+1;i<rows.length;i++){
+  for(let i=1;i<rows.length;i++){
     const r=rows[i]||[];
     const sabun=r[cSabun];
     if(!sabun||String(sabun).trim()==="") continue;
