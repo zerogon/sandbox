@@ -460,12 +460,19 @@ function sortSlot(a,b){
 function parseTarget(wb){
   const ws = wb.Sheets[wb.SheetNames[0]]; // 첫 시트 강제
   const rows = XLSX.utils.sheet_to_json(ws,{header:1,defval:null,raw:true});
-  const hdr=(rows[0]||[]).map(c=>String(c||"").replace(/\s/g,""));
+  // 헤더 행 동적 탐색: '사번' 과 '리조트'(또는 '성명')가 함께 있는 행
+  // (시작 셀이 A1이든 B1이든, 앞에 빈 행/열이 있어도 인식되도록)
+  let h=0;
+  for(let i=0;i<rows.length;i++){
+    const line=(rows[i]||[]).map(c=>String(c||""));
+    if(line.some(c=>c.includes("사번")) && line.some(c=>c.includes("리조트")||c.includes("성명"))){h=i;break;}
+  }
+  const hdr=(rows[h]||[]).map(c=>String(c||"").replace(/\s/g,""));
   const col=name=>hdr.findIndex(c=>c.includes(name));
   const cSabun=col("사번"),cName=col("성명"),cDeptC=col("부서코드"),cDept=col("부서명"),
         cResort=col("리조트"),cRegion=col("지역"),cType=col("룸타입"),cIn=col("입실일");
   const apps=[];
-  for(let i=1;i<rows.length;i++){
+  for(let i=h+1;i<rows.length;i++){
     const r=rows[i]||[];
     const sabun=r[cSabun];
     if(!sabun||String(sabun).trim()==="") continue;
@@ -734,10 +741,11 @@ function draw(){
     const g=STATE.groups[gk];
     // 복사/검색 일치를 위해 객실 LIST(slot) 표기로 desc 생성 — STEP3 검색 hay와 동일 필드 사용
     const r=slotByGroup[gk]||g;
-    const desc=`${r.resort} ${r.region} / ${r.type} (${r.in})`;
+    const room=`${r.resort} ${r.region} / ${r.type}`;   // 날짜 제외
+    const desc=`${room} (${r.in})`;                      // 복사/검색용(기존 형식 유지)
     g.sabuns.forEach(s=>{
       oneToOneCntBySabun[s]=(oneToOneCntBySabun[s]||0)+1;
-      (oneToOneAppliedBySabun[s]=oneToOneAppliedBySabun[s]||[]).push(desc);
+      (oneToOneAppliedBySabun[s]=oneToOneAppliedBySabun[s]||[]).push({desc,room,in:r.in});
     });
   });
   const mailTargets=Object.keys(oneToOneCntBySabun).filter(s=>oneToOneCntBySabun[s]>=2)
@@ -801,8 +809,8 @@ function renderResult(){
        +'<div class="scroll"><table><thead><tr><th>순번</th><th>사번</th><th>성명</th><th>부서</th><th>1:1 신청건수</th><th>신청 객실(1:1)</th></tr></thead><tbody>';
   R.mailTargets.sort((a,b)=>b.applied-a.applied).forEach((t,i)=>{
     const rooms=(t.appliedList||[]).map(x=>
-        `<div class="room-line"><span>${esc(x)}</span>`
-       +`<button type="button" class="copybtn" data-room="${esc(x)}">📋 복사</button></div>`).join("");
+        `<div class="room-line"><span>${esc(x.desc)}</span>`
+       +`<button type="button" class="copybtn" data-room="${esc(x.desc)}">📋 복사</button></div>`).join("");
     m+=`<tr><td>${i+1}</td><td>${esc(t.sabun)}</td><td>${esc(t.name)}</td><td>${esc(t.dept)}</td><td>${t.applied}</td><td>${rooms}</td></tr>`;
   });
   if(!R.mailTargets.length) m+='<tr><td colspan="6" class="note">해당 대상 없음</td></tr>';
@@ -859,9 +867,15 @@ document.getElementById("btn-dl-all").addEventListener("click",()=>{
       return {순번:i+1,리조트:r.slot.resort,지역:r.slot.region,객실타입:r.slot.type,입실일:r.slot.in,
               정원:r.quota,당첨:r.filled,미충원:r.quota-r.filled,사유:reason};
     });
-  // 선택지메일
-  const mailRows=R.mailTargets.map((t,i)=>({순번:i+1,사번:t.sabun,성명:t.name,부서:t.dept,
-    "1:1신청건수":t.applied,"신청객실(1:1)":(t.appliedList||[]).join(" / ")}));
+  // 선택지메일 — 신청객실마다 1행 분리, 입실일 별도 컬럼
+  const mailRows=[];
+  let mailSeq=0;
+  R.mailTargets.forEach(t=>{
+    (t.appliedList||[]).forEach(x=>{
+      mailRows.push({순번:++mailSeq,사번:t.sabun,성명:t.name,부서:t.dept,
+        "1:1신청건수":t.applied,신청객실:x.room,입실일:x.in});
+    });
+  });
   // 낙첨
   const loseRows=R.losers.slice().sort((a,b)=>a.sabun<b.sabun?-1:1)
     .map((a,i)=>({순번:i+1,사번:a.sabun,성명:a.name,부서:a.dept,결과:"낙첨"}));
@@ -869,7 +883,7 @@ document.getElementById("btn-dl-all").addEventListener("click",()=>{
   downloadSheets([
     {name:"당첨자",rows:winRows,empty:{순번:"",리조트:"",지역:"",객실타입:"",입실일:"",사번:"",성명:"",부서:"",결과:""}},
     {name:"미충원",rows:unfilledRows,empty:{순번:"",리조트:"",지역:"",객실타입:"",입실일:"",정원:"",당첨:"",미충원:"",사유:""}},
-    {name:"선택지메일",rows:mailRows,empty:{순번:"",사번:"",성명:"",부서:"","1:1신청건수":"","신청객실(1:1)":""}},
+    {name:"선택지메일",rows:mailRows,empty:{순번:"",사번:"",성명:"",부서:"","1:1신청건수":"",신청객실:"",입실일:""}},
     {name:"낙첨",rows:loseRows,empty:{순번:"",사번:"",성명:"",부서:"",결과:""}},
   ],"추첨_결과.xlsx");
 });
