@@ -741,7 +741,7 @@ function draw(){
     const g=STATE.groups[gk];
     // 복사/검색 일치를 위해 객실 LIST(slot) 표기로 desc 생성 — STEP3 검색 hay와 동일 필드 사용
     const r=slotByGroup[gk]||g;
-    const room=`${r.resort} ${r.region} / ${r.type}`;   // 날짜 제외
+    const room=`${r.resort} ${r.region} - ${r.type}`;   // 날짜 제외
     const desc=`${room} (${r.in})`;                      // 복사/검색용(기존 형식 유지)
     g.sabuns.forEach(s=>{
       oneToOneCntBySabun[s]=(oneToOneCntBySabun[s]||0)+1;
