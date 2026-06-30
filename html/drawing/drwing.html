@@ -542,32 +542,38 @@ function autoMatch(){
     STATE.matchMap[s.id]=best.key;STATE.matchStatus[s.id]=status;used.add(best.key);
   });
   // 2차: 1차 실패분 → 같은 리조트+입실일에서 타입 유사도 best (추천)
+  // 전역 최고점수 우선 배정: 슬롯 등장 순서가 아니라 (슬롯,그룹) 모든 쌍을
+  // 점수 내림차순으로 확정해, 약하게 맞는 슬롯이 강하게 맞는 슬롯의 그룹을
+  // 선점하는 오배정을 방지한다.
+  const pairs=[];
   STATE.slots.forEach(s=>{
     if(STATE.matchMap[s.id]) return;
-    let best=null,bestScore=0;
     groups.forEach(g=>{
-      if(used.has(g.key)||g.resort!==s.resort||g.in!==s.in) return;
+      if(g.resort!==s.resort||g.in!==s.in) return;
       const sc=dice(s.ntype,g.ntype)*0.7+regionScore(s.rkey,g.rkey)*0.3;
-      if(sc>bestScore){bestScore=sc;best=g;}
+      if(sc>=0.4) pairs.push({sid:s.id,gk:g.key,sc});
     });
-    if(best && bestScore>=0.4){
-      STATE.matchMap[s.id]=best.key;STATE.matchStatus[s.id]="sug";used.add(best.key);
-    }else{
-      STATE.matchMap[s.id]=null;STATE.matchStatus[s.id]="none";
-    }
+    STATE.matchMap[s.id]=null;STATE.matchStatus[s.id]="none";
+  });
+  pairs.sort((a,b)=>b.sc-a.sc);
+  pairs.forEach(p=>{
+    if(STATE.matchMap[p.sid]||used.has(p.gk)) return;
+    STATE.matchMap[p.sid]=p.gk;STATE.matchStatus[p.sid]="sug";used.add(p.gk);
   });
 }
 
 function groupOptionsFor(slot, currentKey){
-  // 후보: 같은 리조트 그룹 + 미사용 우선. 현재 선택 포함.
+  // 후보: 같은 리조트 + 같은 입실일 + 매칭 가능성 있는(종합점수>0) 그룹만.
+  // 현재 선택된 그룹은 점수/날짜와 무관하게 항상 포함(수동 지정 보존).
   const usedByOther=new Set(Object.entries(STATE.matchMap)
         .filter(([sid,gk])=>gk && sid!==slot.id).map(([,gk])=>gk));
   const opts=Object.values(STATE.groups)
-    .filter(g=>g.resort===slot.resort)
+    .filter(g=>g.resort===slot.resort && (g.in===slot.in || g.key===currentKey))
     .map(g=>{
-      const sc=dice(slot.ntype,g.ntype);
+      const sc=dice(slot.ntype,g.ntype)*0.7+regionScore(slot.rkey,g.rkey)*0.3;
       return {g,sc,taken:usedByOther.has(g.key)};
     })
+    .filter(o=>o.sc>0 || o.g.key===currentKey)
     .sort((a,b)=>b.sc-a.sc);
   return opts;
 }
@@ -613,7 +619,7 @@ function renderMatch(){
     let sel=`<select data-slot="${esc(s.id)}"><option value="">— 신청없음(미배정) —</option>`;
     opts.forEach(o=>{
       const dateWarn = o.g.in!==s.in ? " ⚠날짜다름("+o.g.in+")" : "";
-      const label=`${esc(o.g.type)} / ${esc(o.g.region)} ${o.g.in}${o.taken?" ⚠중복":""}${dateWarn}`;
+      const label=`${esc(o.g.type)} / ${esc(o.g.region)}${o.taken?" ⚠중복":""}${dateWarn}`;
       sel+=`<option value="${esc(o.g.key)}" ${o.g.key===gk?"selected":""}>${label}</option>`;
     });
     sel+="</select>";
@@ -820,12 +826,10 @@ function renderResult(){
       document.getElementById("tab-"+n).classList.toggle("hidden",n!==el.getAttribute("data-tab")));
   }));
 
-  // 당첨자
-  let h='<div class="scroll"><table><thead><tr><th>순번</th><th>리조트</th><th>지역</th><th>객실타입</th><th>입실일</th>'
-       +'<th>사번</th><th>성명</th><th>부서</th></tr></thead><tbody>';
+  // 당첨자 (화면 표시는 순번·성명·부서만)
+  let h='<div class="scroll"><table><thead><tr><th>순번</th><th>성명</th><th>부서</th></tr></thead><tbody>';
   R.winners.slice().sort((a,b)=>sortSlot(a.slot,b.slot)).forEach((w,i)=>{
-    h+=`<tr><td>${i+1}</td><td>${w.slot.resort}</td><td>${esc(w.slot.region)}</td><td>${esc(w.slot.type)}</td>`
-      +`<td>${w.slot.in}</td><td>${esc(w.app.sabun)}</td><td>${esc(w.app.name)}</td><td>${esc(w.app.dept)}</td></tr>`;
+    h+=`<tr><td>${i+1}</td><td>${esc(w.app.name)}</td><td>${esc(w.app.dept)}</td></tr>`;
   });
   document.getElementById("tab-win").innerHTML=h+"</tbody></table></div>";
 
@@ -891,8 +895,10 @@ function downloadSheets(sheets, filename){ // sheets = [{name, rows}]
 document.getElementById("btn-dl-all").addEventListener("click",()=>{
   const R=STATE.result;
   if(!R){return;}
-  // 당첨자
-  const winRows=R.winners.slice().sort((a,b)=>sortSlot(a.slot,b.slot)).map((w,i)=>({
+  // 당첨자 — 선택지메일 대상자는 당첨자 시트에서 제외(선택지메일 시트에만 표기)
+  const mailSet=new Set(R.mailTargets.map(t=>t.sabun));
+  const winRows=R.winners.slice().filter(w=>!mailSet.has(w.app.sabun))
+    .sort((a,b)=>sortSlot(a.slot,b.slot)).map((w,i)=>({
     순번:i+1,리조트:w.slot.resort,지역:w.slot.region,객실타입:w.slot.type,입실일:w.slot.in,
     사번:w.app.sabun,성명:w.app.name,부서:w.app.dept,결과:"당첨"}));
   // 미충원 (화면 표와 동일한 정렬·사유)
@@ -916,8 +922,30 @@ document.getElementById("btn-dl-all").addEventListener("click",()=>{
   const loseRows=R.losers.slice().sort((a,b)=>a.sabun<b.sabun?-1:1)
     .map((a,i)=>({순번:i+1,사번:a.sabun,성명:a.name,부서:a.dept,결과:"낙첨"}));
 
+  // 검증 — 전체 당첨자의 신청내역 ↔ 배정(당첨) 객실을 나란히 대조 + 자동 점검.
+  // 점검: 입실일 불일치 또는 타입/지역 유사도<0.5 → ⚠확인필요. 의심 행을 맨 위로 정렬.
+  const verifyEmpty={순번:"",사번:"",성명:"",부서:"",
+    "[신청] 리조트":"","[신청] 지역":"","[신청] 룸타입":"","[신청] 입실일":"",
+    "[당첨] 리조트":"","[당첨] 지역":"","[당첨] 객실타입":"","[당첨] 입실일":"",
+    "입실일 일치":"","타입 유사도":"","지역 유사도":"","점검":""};
+  const verifyRows=R.winners.slice().map(w=>{
+    const ts=dice(normType(w.app.type),w.slot.ntype);
+    const rs=regionScore(regionKey(w.app.region),w.slot.rkey);
+    const dateOk=w.app.in===w.slot.in;
+    const susp=(!dateOk||ts<0.5||rs<0.5);
+    return {w,ts,rs,dateOk,susp};
+  }).sort((a,b)=>(b.susp-a.susp)||sortSlot(a.w.slot,b.w.slot))
+    .map((v,i)=>({순번:i+1,사번:v.w.app.sabun,성명:v.w.app.name,부서:v.w.app.dept,
+      "[신청] 리조트":v.w.app.resort,"[신청] 지역":v.w.app.region,
+      "[신청] 룸타입":v.w.app.type,"[신청] 입실일":v.w.app.in,
+      "[당첨] 리조트":v.w.slot.resort,"[당첨] 지역":v.w.slot.region,
+      "[당첨] 객실타입":v.w.slot.type,"[당첨] 입실일":v.w.slot.in,
+      "입실일 일치":v.dateOk?"Y":"N","타입 유사도":v.ts.toFixed(2),
+      "지역 유사도":v.rs.toFixed(2),"점검":v.susp?"⚠확인필요":"정상"}));
+
   downloadSheets([
     {name:"당첨자",rows:winRows,empty:{순번:"",리조트:"",지역:"",객실타입:"",입실일:"",사번:"",성명:"",부서:"",결과:""}},
+    {name:"검증",rows:verifyRows,empty:verifyEmpty},
     {name:"미충원",rows:unfilledRows,empty:{순번:"",리조트:"",지역:"",객실타입:"",입실일:"",정원:"",당첨:"",미충원:"",사유:""}},
     {name:"선택지메일",rows:mailRows,empty:{순번:"",사번:"",성명:"",부서:"","1:1신청건수":"",신청객실:"",입실일:""}},
     {name:"낙첨",rows:loseRows,empty:{순번:"",사번:"",성명:"",부서:"",결과:""}},
