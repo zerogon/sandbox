@@ -144,11 +144,15 @@
            background:var(--panel);border:1px solid var(--line);color:var(--accent);
            box-shadow:none;flex:0 0 auto;}
   .copybtn:hover{border-color:var(--accent);background:#eff6ff;filter:none;box-shadow:none;}
+  /* ===== 숨겨진 녹화모드 토글 ===== */
+  #rec-toggle{cursor:pointer;user-select:none;transition:filter .2s;}
+  #rec-toggle.on{filter:drop-shadow(0 0 5px #dc2626);}
+  td.mosaic{filter:blur(6px);user-select:none;pointer-events:none;}
 </style>
 </head>
 <body>
 <header>
-  <h1>🏢 사내복지기금운영국</h1>
+  <h1><span id="rec-toggle">🏢</span> 사내복지기금운영국</h1>
   <nav class="toptabs" id="toptabs">
     <span class="toptab active" data-view="view-lottery">🎲 휴양지 랜덤 추첨</span>
     <span class="toptab" data-view="view-dedup">🧹 엑셀 중복 검출</span>
@@ -379,7 +383,25 @@ const STATE = {
   groups: {},       // groupKey -> {resort,region,type,in, sabuns:Set, apps:[]}
   matchMap: {},      // slotId -> groupKey | null
   result: null,
+  recordMode: false,
 };
+
+/* ===== 숨겨진 녹화모드 토글 ===== */
+document.getElementById("rec-toggle").addEventListener("click",()=>{
+  if(!STATE.recordMode){
+    if(confirm("녹화모드를 켜시겠습니까?")){
+      STATE.recordMode=true;
+      document.getElementById("rec-toggle").classList.add("on");
+      if(STATE.result) renderResult();
+    }
+  }else{
+    if(confirm("녹화모드를 끄시겠습니까?")){
+      STATE.recordMode=false;
+      document.getElementById("rec-toggle").classList.remove("on");
+      if(STATE.result) renderResult();
+    }
+  }
+});
 
 /* ============================================================
    STEP 1 — 객실 LIST(정원) 파싱
@@ -826,10 +848,13 @@ function renderResult(){
       document.getElementById("tab-"+n).classList.toggle("hidden",n!==el.getAttribute("data-tab")));
   }));
 
-  // 당첨자 (화면 표시는 순번·성명·부서만)
-  let h='<div class="scroll"><table><thead><tr><th>순번</th><th>성명</th><th>부서</th></tr></thead><tbody>';
+  // 당첨자 (녹화모드 시 객실정보 모자이크)
+  const mz=STATE.recordMode?' class="mosaic"':'';
+  let h='<div class="scroll"><table><thead><tr><th>순번</th><th>리조트</th><th>지역</th><th>객실타입</th><th>입실일</th>'
+       +'<th>사번</th><th>성명</th><th>부서</th></tr></thead><tbody>';
   R.winners.slice().sort((a,b)=>sortSlot(a.slot,b.slot)).forEach((w,i)=>{
-    h+=`<tr><td>${i+1}</td><td>${esc(w.app.name)}</td><td>${esc(w.app.dept)}</td></tr>`;
+    h+=`<tr><td>${i+1}</td><td${mz}>${w.slot.resort}</td><td${mz}>${esc(w.slot.region)}</td><td${mz}>${esc(w.slot.type)}</td>`
+      +`<td${mz}>${w.slot.in}</td><td>${esc(w.app.sabun)}</td><td>${esc(w.app.name)}</td><td>${esc(w.app.dept)}</td></tr>`;
   });
   document.getElementById("tab-win").innerHTML=h+"</tbody></table></div>";
 
