@@ -241,8 +241,8 @@
     <div class="step-bd">
       <div class="row">
         <button id="btn-draw">🎲 추첨 실행</button>
-        <button class="ghost" id="btn-redraw" disabled>↻ 다시 추첨</button>
-        <span class="note">버튼을 누를 때마다 새로 무작위 추첨합니다(매 실행 결과 상이).</span>
+        <button class="ghost hidden" id="btn-redraw" disabled>↻ 다시 추첨</button>
+        <span class="note hidden" id="redraw-note">버튼을 누를 때마다 새로 무작위 추첨합니다(매 실행 결과 상이).</span>
       </div>
     </div>
   </section>
@@ -401,6 +401,12 @@ document.getElementById("rec-toggle").addEventListener("click",()=>{
       if(STATE.result) renderResult();
     }
   }
+});
+
+/* ===== 숨겨진 다시추첨 토글: STEP4 상태 칩 클릭 ===== */
+document.querySelector("#step4 .st-state").addEventListener("click",()=>{
+  document.getElementById("btn-redraw").classList.toggle("hidden");
+  document.getElementById("redraw-note").classList.toggle("hidden");
 });
 
 /* ============================================================
