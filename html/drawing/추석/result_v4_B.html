@@ -1,0 +1,1644 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>사내복지기금운영국 — 지망제 v4 (B안)</title>
+<!-- 엑셀 중복 검출용: 셀 스타일 지원 xlsx-js-style를 먼저 로드해 XLSXStyle로 캡처 -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+<script>var XLSXStyle = window.XLSX;</script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<!-- 추첨용 SheetJS 0.18.5 — 반드시 마지막에 로드해 window.XLSX를 추첨 코드가 기대하는 버전으로 복원 -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+  :root{
+    --bg:#f1f5f9; --panel:#ffffff; --panel2:#f8fafc; --line:#e2e8f0;
+    --text:#1e293b; --muted:#64748b; --accent:#2563eb; --accent2:#3b82f6;
+    --ok:#16a34a; --warn:#d97706; --bad:#dc2626; --chip:#eef2f7;
+    --shadow:0 1px 2px rgba(15,23,42,.06),0 1px 3px rgba(15,23,42,.08);
+    --shadow-hover:0 4px 12px rgba(37,99,235,.12);
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:"Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;
+       background:var(--bg);color:var(--text);line-height:1.5;
+       -webkit-font-smoothing:antialiased;}
+  header{padding:22px 28px;border-bottom:1px solid var(--line);background:var(--panel);}
+  header h1{margin:0;font-size:21px;font-weight:700;letter-spacing:-.01em;}
+  /* 헤더 단계 요약 */
+  .flow{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:2px 0 16px;
+        color:var(--muted);font-size:12.5px;}
+  .flow .f{display:inline-flex;align-items:center;gap:6px;padding:4px 11px;border-radius:20px;
+           background:var(--panel2);border:1px solid var(--line);cursor:pointer;transition:.15s;}
+  .flow .f:hover{border-color:var(--accent);color:var(--accent);background:#eff6ff;}
+  .flow .f .n{display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;
+              border-radius:50%;background:#dbeafe;color:var(--accent);font-size:10.5px;font-weight:700;}
+  .flow .arr{color:#cbd5e1;font-size:12px;}
+  main{max-width:1180px;margin:0 auto;padding:28px 20px 80px;}
+  .step{background:var(--panel);border:1px solid var(--line);border-radius:14px;margin-bottom:18px;
+        overflow:hidden;box-shadow:var(--shadow);transition:opacity .2s, box-shadow .2s;}
+  .step.disabled{opacity:.55;pointer-events:none;box-shadow:none;}
+  .step.is-current{box-shadow:0 0 0 2px rgba(37,99,235,.18),var(--shadow);}
+  .step-hd{display:flex;align-items:center;gap:13px;padding:16px 20px;border-bottom:1px solid var(--line);}
+  .step-hd .num{width:30px;height:30px;border-radius:50%;background:#e2e8f0;color:var(--muted);
+       display:flex;align-items:center;justify-content:center;font-weight:700;flex:0 0 auto;
+       font-size:14px;transition:.2s;}
+  .step.is-current .num{background:var(--accent);color:#fff;box-shadow:0 0 0 4px rgba(37,99,235,.15);}
+  .step.is-done .num{background:var(--ok);color:#fff;}
+  .step.is-done .num::after{content:"✓";}
+  .step.is-done .num .nlabel{display:none;}
+  .step-hd h2{margin:0;font-size:16px;font-weight:700;}
+  .step-hd .sub{color:var(--muted);font-size:12px;font-weight:400;}
+  /* 헤더 우측 상태 칩 */
+  .st-state{margin-left:auto;font-size:11.5px;font-weight:600;padding:4px 11px;border-radius:20px;
+            white-space:nowrap;}
+  .is-wait .st-state{background:var(--panel2);color:var(--muted);border:1px solid var(--line);}
+  .is-current .st-state{background:#dbeafe;color:var(--accent);}
+  .is-done .st-state{background:#dcfce7;color:#15803d;}
+  .st-state::before{margin-right:5px;}
+  .is-wait .st-state::before{content:"○";}
+  .is-current .st-state::before{content:"●";}
+  .is-done .st-state::before{content:"✓";}
+  .step-bd{padding:18px 20px;}
+  .drop{display:block;border:2px dashed var(--line);border-radius:12px;padding:30px;text-align:center;
+        cursor:pointer;background:var(--panel2);
+        transition:border-color .15s, background-color .15s, box-shadow .15s;}
+  .drop:hover,.drop.over{border-color:var(--accent);background:#eff6ff;box-shadow:var(--shadow-hover);}
+  .drop.over{border-style:solid;}
+  .drop input{display:none;}
+  .drop .big{font-size:14px;}
+  .drop .big b{color:var(--text);}
+  .drop .hint{color:var(--muted);font-size:12.5px;margin-top:7px;}
+  code{background:#eef2f7;border:1px solid var(--line);border-radius:5px;padding:1px 6px;
+       font-size:12px;color:#334155;}
+  button{font-family:inherit;font-size:14px;border:0;border-radius:9px;padding:10px 18px;cursor:pointer;
+         background:var(--accent);color:#fff;font-weight:600;transition:filter .15s, box-shadow .15s;
+         box-shadow:var(--shadow);}
+  button:hover{filter:brightness(.95);box-shadow:var(--shadow-hover);}
+  button.ghost{background:var(--panel);border:1px solid var(--line);color:var(--text);font-weight:500;
+               box-shadow:none;}
+  button.ghost:hover{border-color:var(--accent);color:var(--accent);filter:none;box-shadow:none;}
+  button:disabled{opacity:.4;cursor:not-allowed;filter:none;box-shadow:none;}
+  .to-top{position:fixed;right:24px;bottom:24px;width:46px;height:46px;border-radius:50%;
+          padding:0;font-size:20px;display:flex;align-items:center;justify-content:center;
+          background:var(--accent);color:#fff;box-shadow:var(--shadow-hover);z-index:50;
+          opacity:0;visibility:hidden;transform:translateY(8px);
+          transition:opacity .2s, transform .2s, visibility .2s;}
+  .to-top.show{opacity:1;visibility:visible;transform:translateY(0);}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;}
+  .chip{background:var(--chip);border:1px solid var(--line);border-radius:20px;padding:5px 13px;font-size:13px;color:var(--muted);}
+  .chip b{color:var(--text);}
+  .chip.total{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600;}
+  .chip.total b{color:#fff;}
+  .chip.warn-chip{background:transparent;border-color:var(--warn);color:var(--warn);font-weight:600;}
+  .warn-box{border:1px solid var(--bad);background:#fef2f2;color:var(--bad);border-radius:8px;
+            padding:10px 14px;font-size:13px;margin-bottom:14px;line-height:1.75;}
+  .rule-box{border:1px solid var(--line);background:var(--panel2);border-radius:8px;
+            padding:9px 13px;font-size:12.5px;color:var(--muted);margin-bottom:12px;line-height:1.6;}
+  .rule-box b{color:var(--text);}
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th,td{padding:8px 11px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;}
+  th{color:var(--muted);font-weight:600;position:sticky;top:0;background:var(--panel2);z-index:1;}
+  tbody tr:hover{background:#f8fbff;}
+  .scroll{max-height:430px;overflow:auto;border:1px solid var(--line);border-radius:10px;margin-top:12px;}
+  .badge{font-size:11px;padding:2px 8px;border-radius:12px;font-weight:700;white-space:nowrap;}
+  .b-auto{background:#dcfce7;color:#15803d;}
+  .b-sug{background:#fef3c7;color:#b45309;}
+  .b-none{background:#fee2e2;color:#b91c1c;}
+  .b-empty{background:#eef2f7;color:#64748b;}
+  select{font-family:inherit;font-size:12px;font-weight:600;background:var(--panel);color:var(--text);
+         border:1px solid var(--line);border-radius:7px;padding:6px 8px;max-width:340px;transition:border-color .15s, box-shadow .15s;}
+  select option{font-weight:600;}
+  select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.15);}
+  .note{font-size:12px;color:var(--muted);margin-top:8px;}
+  .summary{display:flex;gap:14px;flex-wrap:wrap;margin:4px 0 14px;}
+  .card{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:13px 17px;min-width:120px;}
+  .card .k{color:var(--muted);font-size:12px;}
+  .card .v{font-size:22px;font-weight:700;}
+  .v.ok{color:var(--ok);} .v.warn{color:var(--warn);} .v.bad{color:var(--bad);}
+  .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;}
+  .tab{padding:8px 15px;border-radius:9px 9px 0 0;background:var(--panel2);cursor:pointer;font-size:13px;
+       border:1px solid var(--line);border-bottom:none;color:var(--muted);transition:.15s;}
+  .tab:hover{color:var(--text);}
+  .tab.active{background:var(--accent);color:#fff;font-weight:700;border-color:var(--accent);}
+  .hidden{display:none;}
+  .filterbar{display:flex;gap:10px;align-items:center;margin-top:16px;margin-bottom:8px;flex-wrap:wrap;}
+  .filterbar input[type=text]{background:var(--panel);border:1px solid var(--line);color:var(--text);
+       border-radius:7px;padding:8px 11px;font-size:13px;min-width:220px;transition:border-color .15s, box-shadow .15s;}
+  .filterbar input[type=text]:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.15);}
+  .ok-txt{color:var(--ok);} .warn-txt{color:var(--warn);} .bad-txt{color:var(--bad);}
+  .legend{font-size:12px;color:var(--muted);display:flex;gap:14px;flex-wrap:wrap;margin-top:6px;}
+  .mini{font-size:11px;color:var(--muted);}
+  h3{margin:18px 0 6px;font-size:14px;}
+  /* ===== 최상단 탭 바 (추첨 / 엑셀 중복 검출) ===== */
+  .toptabs{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;}
+  .toptab{padding:9px 18px;border-radius:9px;background:var(--panel2);cursor:pointer;
+          font-size:13.5px;font-weight:600;border:1px solid var(--line);color:var(--muted);
+          transition:.15s;box-shadow:var(--shadow);}
+  .toptab:hover{color:var(--text);border-color:var(--accent);}
+  .toptab.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+  /* ===== 엑셀 중복 검출 패널 ===== */
+  .dd-desc{font-size:13px;color:var(--muted);line-height:1.7;margin:2px 0 16px;}
+  .dd-desc b{color:var(--text);}
+  .dd-result{margin-top:16px;padding:13px 16px;border-radius:10px;font-size:13px;
+             line-height:1.6;white-space:pre-wrap;border:1px solid var(--line);}
+  .dd-result.success{background:#f0fdf4;color:#15803d;border-color:#bbf7d0;}
+  .dd-result.error{background:#fef2f2;color:#b91c1c;border-color:#fecaca;}
+  /* ===== 숨겨진 녹화모드 토글 ===== */
+  #rec-toggle{cursor:pointer;user-select:none;transition:filter .2s;}
+  #rec-toggle.on{filter:drop-shadow(0 0 5px #dc2626);}
+  td.mosaic{filter:blur(6px);user-select:none;pointer-events:none;}
+</style>
+</head>
+<body>
+<header>
+  <h1><span id="rec-toggle">🏢</span> 사내복지기금운영국</h1>
+  <nav class="toptabs" id="toptabs">
+    <span class="toptab active" data-view="view-lottery">🎲 휴양지 랜덤 추첨 (지망제 v4 · B안)</span>
+    <span class="toptab" data-view="view-dedup">🧹 엑셀 중복 검출</span>
+  </nav>
+</header>
+
+<main id="view-lottery">
+
+  <div class="flow">
+    <span class="f" data-target="step1"><span class="n">1</span> 객실 LIST</span><span class="arr">→</span>
+    <span class="f" data-target="step2"><span class="n">2</span> 신청명단</span><span class="arr">→</span>
+    <span class="f" data-target="step3"><span class="n">3</span> 매칭 검수</span><span class="arr">→</span>
+    <span class="f" data-target="step4"><span class="n">4</span> 추첨</span><span class="arr">→</span>
+    <span class="f" data-target="step5"><span class="n">5</span> 결과/다운로드</span>
+  </div>
+
+  <!-- STEP 1 -->
+  <section class="step" id="step1">
+    <div class="step-hd"><span class="num"><span class="nlabel">1</span></span>
+      <div><h2>객실 LIST 업로드 <span class="sub">— source.xlsx (객실별 추첨 정원)</span></h2></div>
+      <span class="st-state"></span>
+    </div>
+    <div class="step-bd">
+      <label class="drop" id="drop1">
+        <input type="file" id="file1" accept=".xlsx,.xls" />
+        <div class="big">📂 <b>객실 LIST 엑셀</b>을 끌어다 놓거나 클릭해서 선택</div>
+        <div class="hint">시트 <code>객실 LIST</code>의 객실 한 행 = 당첨 1자리(정원)로 계산합니다.</div>
+      </label>
+      <div id="src-result" class="hidden">
+        <div class="chips" id="src-chips"></div>
+        <div class="scroll"><table id="src-table"></table></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STEP 2 -->
+  <section class="step disabled" id="step2">
+    <div class="step-hd"><span class="num"><span class="nlabel">2</span></span>
+      <div><h2>신청명단 업로드 <span class="sub">— target.xlsx (첫 시트만 사용)</span></h2></div>
+      <span class="st-state"></span>
+    </div>
+    <div class="step-bd">
+      <label class="drop" id="drop2">
+        <input type="file" id="file2" accept=".xlsx,.xls" />
+        <div class="big">📂 <b>신청명단 엑셀</b>을 끌어다 놓거나 클릭해서 선택</div>
+        <div class="hint">첫 번째 시트(예: <code>휴양소 조회처리_0410</code>)만 사용합니다. 다른 시트는 무시.<br>
+          <b>가로형</b>(1인 1행) — <code>1지망리조트/1지망지역/1지망룸타입/1지망입실일 … 5지망…</code> 처럼 <code>N지망</code>이 붙은 컬럼 세트를 자동 인식합니다.<br>
+          <b>세로형</b>(1인 N행) — <code>우선순위</code>(또는 <code>지망</code>·<code>순위</code>) 컬럼의 숫자를 지망으로 쓰고, 없으면 같은 사번의 <b>행 순서</b>(위→아래)를 지망으로 간주합니다.<br>
+          번호가 <code>1</code>부터 시작하지 않아도 됩니다 — <code>2,3</code>만 있으면 <b>작은 값부터 1·2지망</b>으로 다시 매깁니다(건너뛴 번호·중복 흡수).<br>
+          지망은 <b>최대 5개</b>까지 인정하며, 초과분은 제외하고 경고를 표시합니다.</div>
+      </label>
+      <div id="tgt-result" class="hidden">
+        <div class="chips" id="tgt-chips"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STEP 3 -->
+  <section class="step disabled" id="step3">
+    <div class="step-hd"><span class="num"><span class="nlabel">3</span></span>
+      <div><h2>매칭 검수 <span class="sub">— 객실(정원) ↔ 신청 그룹 연결</span></h2></div>
+      <span class="st-state"></span>
+    </div>
+    <div class="step-bd">
+      <div class="summary" id="match-summary"></div>
+      <div class="legend">
+        <span><span class="badge b-auto">자동</span> 정규화 자동 매칭</span>
+        <span><span class="badge b-sug">추천</span> 유사 후보 — 확인 권장</span>
+        <span><span class="badge b-none">미매칭</span> 직접 연결 필요</span>
+        <span><span class="badge b-empty">신청없음</span> 신청자 0 (빈 객실)</span>
+      </div>
+      <div class="filterbar">
+        <input type="text" id="match-filter" placeholder="리조트/지역/타입 검색…" />
+        <label class="mini"><input type="checkbox" id="only-issue" checked /> 검수필요(추천·미매칭)만 보기</label>
+      </div>
+      <div class="scroll"><table id="match-table"></table></div>
+      <div class="row" style="margin-top:14px;">
+        <button id="btn-confirm">✅ 매칭 확정</button>
+        <span class="note" id="match-note"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- STEP 4 -->
+  <section class="step disabled" id="step4">
+    <div class="step-hd"><span class="num"><span class="nlabel">4</span></span>
+      <div><h2>추첨 실행 <span class="sub">— 당첨 인원 최대 보장 → 개인 지망 우선(1지망→2지망→…) → 동률 시 무작위(리조트 순서 없음)</span></h2></div>
+      <span class="st-state"></span>
+    </div>
+    <div class="step-bd">
+      <div class="rule-box" id="variant-rule"></div>
+      <div class="row">
+        <button id="btn-draw">🎲 추첨 실행</button>
+        <button class="ghost hidden" id="btn-redraw" disabled>↻ 다시 추첨</button>
+        <span class="note hidden" id="redraw-note">버튼을 누를 때마다 새로 무작위 추첨합니다(매 실행 결과 상이).</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- STEP 5 -->
+  <section class="step disabled" id="step5">
+    <div class="step-hd"><span class="num"><span class="nlabel">5</span></span>
+      <div><h2>결과 / 리포트 <span class="sub">— 다운로드</span></h2></div>
+      <span class="st-state"></span>
+    </div>
+    <div class="step-bd">
+      <div id="result-warn"></div>
+      <div class="summary" id="result-summary"></div>
+      <div class="row" style="margin-bottom:14px;">
+        <button id="btn-dl-all">⬇ 결과 전체 (.xlsx) — 시트 4개</button>
+      </div>
+      <div class="tabs" id="result-tabs"></div>
+      <div id="tab-win"></div>
+      <div id="tab-unfilled" class="hidden"></div>
+      <div id="tab-lose" class="hidden"></div>
+    </div>
+  </section>
+
+</main>
+
+<main id="view-dedup" class="hidden">
+  <p class="dd-desc">
+    엑셀 파일을 업로드하면 <b id="dd-colsSummary"></b> 3개 조합이 같은 행에서 첫 행만 남기고 나머지를 제거합니다.<br>
+    결과 파일은 2개 시트로 저장됩니다 — <b>원본</b>(업로드 그대로) / <b>중복제거</b>(정렬 + 중복 제거 최종본, 탭 노란색).<br>
+    헤더는 <b id="dd-headerStartLabel">A1</b> 셀부터 시작해야 하며, 반드시 <b id="dd-colsList"></b> 컬럼이 있어야 합니다.
+  </p>
+
+  <section class="step is-current">
+    <div class="step-hd"><span class="num"><span class="nlabel">1</span></span>
+      <div><h2>샘플 데이터 <span class="sub">— 테스트용 엑셀</span></h2></div>
+    </div>
+    <div class="step-bd">
+      <div class="row">
+        <button class="ghost" id="dd-btnSample">⬇ 샘플 엑셀 다운로드</button>
+        <span class="note">다자녀(중복 아님)와 진짜 중복이 섞인 시나리오.</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="step">
+    <div class="step-hd"><span class="num"><span class="nlabel">2</span></span>
+      <div><h2>엑셀 업로드 및 중복 검사 <span class="sub">— 첫 시트만 사용</span></h2></div>
+    </div>
+    <div class="step-bd">
+      <label class="drop" id="dd-drop">
+        <input type="file" id="dd-fileInput" accept=".xlsx,.xls" />
+        <div class="big">📂 <b>검사할 엑셀</b>을 끌어다 놓거나 클릭해서 선택</div>
+        <div class="hint">헤더는 <code id="dd-headerStartHint">A1</code> 셀부터, <span id="dd-colsList2"></span> 컬럼 필요.</div>
+      </label>
+      <div class="note" id="dd-fileInfo">선택된 파일 없음</div>
+      <div class="row" style="margin-top:12px;">
+        <button id="dd-btnProcess" disabled>🔍 중복 검사 및 다운로드</button>
+      </div>
+      <div id="dd-result"></div>
+    </div>
+  </section>
+</main>
+
+<button id="to-top" class="to-top" aria-label="맨 위로" title="맨 위로">↑</button>
+
+<script>
+"use strict";
+/* ============================================================
+   휴양지 랜덤 추첨 — 단일 파일 도구
+   규칙: rule.md / quota_analysis.md / explain.txt 반영
+   ============================================================ */
+
+const MAX_PREF = 5; // 개인이 낼 수 있는 지망 최대 개수. 초과분은 제외 후 경고.
+
+/* ---------- 정규화 헬퍼 ---------- */
+function canonResort(raw){
+  const s = String(raw||"").replace(/\s/g,"");
+  if(s.includes("리솜")||s.includes("호반")) return "호반";
+  if(s.includes("롯데")) return "롯데";
+  if(s.includes("대명")||s.includes("소노")) return "대명";
+  if(s.includes("오크")) return "오크밸리";
+  if(s.includes("한화")) return "한화";
+  return s.replace(/리조트$/,"");
+}
+// 한글 토큰 집합(괄호 순서/구분 흡수)
+function regionTokens(raw){
+  const s = String(raw||"");
+  const t = s.match(/[가-힣A-Za-z0-9]+/g) || [];
+  return new Set(t.filter(x=>x.length>=2).map(x=>x.toLowerCase()));
+}
+function regionKey(raw){
+  return [...regionTokens(raw)].sort().join("|");
+}
+// 타입 정규화: 영숫자/한글만, 평형 숫자 정리, 잡음 토큰 제거
+function normType(raw){
+  let s = String(raw||"").toLowerCase();
+  s = s.replace(/[\s\-\/()_]/g,"");
+  s = s.replace(/평형|평\(|평$|평(?=[^가-힣])/g,"평");
+  s = s.replace(/취사불가|미취사|취사/g,"");
+  s = s.replace(/[^0-9a-z가-힣]/g,"");
+  // 평형 leading-zero 제거: 025평->25평
+  s = s.replace(/0*(\d+)평/g,"$1평");
+  return s;
+}
+function pad2(n){return ("0"+n).slice(-2);}
+function inDate(v){ // -> "MM.DD"
+  if(typeof v==="number" && isFinite(v)){ // 엑셀 날짜 일련번호 (tz 영향 없음)
+    const d=XLSX.SSF.parse_date_code(v);
+    if(d && d.m) return pad2(d.m)+"."+pad2(d.d);
+  }
+  if(v instanceof Date) return pad2(v.getUTCMonth()+1)+"."+pad2(v.getUTCDate());
+  const s = String(v||"").trim();
+  // 숫자만 5자리 = 엑셀 날짜 일련번호가 문자열로 넘어온 경우(결합 셀 등)
+  if(/^\d{5}$/.test(s)){
+    const d=XLSX.SSF.parse_date_code(Number(s));
+    if(d && d.m) return pad2(d.m)+"."+pad2(d.d);
+  }
+  const nums = s.match(/\d+/g);
+  if(!nums) return s;
+  if(nums.length>=3){ // 연-월-일 또는 월/일/연
+    if(nums[0].length===4) return pad2(nums[1])+"."+pad2(nums[2]); // YYYY M D
+    return pad2(nums[0])+"."+pad2(nums[1]);                        // M D YY
+  }
+  if(nums.length===2) return pad2(nums[0])+"."+pad2(nums[1]);
+  return s;
+}
+// 간단 토큰 유사도 (Dice on 2-grams)
+function bigrams(s){const a=[];for(let i=0;i<s.length-1;i++)a.push(s.slice(i,i+2));return a;}
+function dice(a,b){
+  if(a===b) return 1;
+  if(a.length<2||b.length<2) return 0;
+  const A=bigrams(a),B=bigrams(b),mb={};
+  B.forEach(g=>mb[g]=(mb[g]||0)+1);
+  let inter=0;
+  A.forEach(g=>{if(mb[g]>0){inter++;mb[g]--;}});
+  return 2*inter/(A.length+B.length);
+}
+
+/* ---------- 상태 ---------- */
+const STATE = {
+  slots: [],        // {id, resort, region, type, in, quota, key}
+  resortOrder: [],  // 객실 LIST 등장 순서 — 표시 정렬 전용(추첨 로직 미관여)
+  apps: [],         // {sabun, name, dept, resort, region, type, in, key}
+  groups: {},       // groupKey -> {resort,region,type,in, sabuns:Set, apps:[]}
+  matchMap: {},      // slotId -> groupKey | null
+  matchStatus: {},   // slotId -> "auto" | "sug" | "none"
+  prefs: {},         // 사번 -> [{gk, rank, ord, app}] (유효지망 1..MAX_PREF 정규화)
+  prefMode: null,    // "wide"(1~N지망 컬럼) | "column"(우선순위/지망/순위 컬럼) | "roworder"(행 순서)
+  rankColName: "",   // 세로형에서 실제로 인식한 순위 컬럼 헤더명 (칩 표시용)
+  declaredRanks: 0,  // 가로형 헤더가 선언한 지망 수 (세로형은 0)
+  maxRank: 0,        // 표시용 최대 지망 수 = max(실제 관측, 선언) (≤ MAX_PREF)
+  prefWarn: null,    // {overflowPersons, droppedCount, badRankCount, splitFailCount, blankRankCount, dupRankPersons}
+  result: null,
+  recordMode: false,
+};
+
+/* ===== 숨겨진 녹화모드 토글 ===== */
+document.getElementById("rec-toggle").addEventListener("click",()=>{
+  if(!STATE.recordMode){
+    if(confirm("녹화모드를 켜시겠습니까?")){
+      STATE.recordMode=true;
+      document.getElementById("rec-toggle").classList.add("on");
+      if(STATE.result) renderResult();
+    }
+  }else{
+    if(confirm("녹화모드를 끄시겠습니까?")){
+      STATE.recordMode=false;
+      document.getElementById("rec-toggle").classList.remove("on");
+      if(STATE.result) renderResult();
+    }
+  }
+});
+
+/* ===== 숨겨진 다시추첨 토글: STEP4 상태 칩 클릭 ===== */
+document.querySelector("#step4 .st-state").addEventListener("click",()=>{
+  document.getElementById("btn-redraw").classList.toggle("hidden");
+  document.getElementById("redraw-note").classList.toggle("hidden");
+});
+
+/* ============================================================
+   STEP 1 — 객실 LIST(정원) 파싱
+   ============================================================ */
+function parseSource(wb){
+  let ws = wb.Sheets["객실 LIST"] || wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws,{header:1,raw:false,defval:null});
+  // 헤더 행 찾기: 'No.' 와 '리조트명' 포함된 행
+  let h=-1;
+  for(let i=0;i<rows.length;i++){
+    const line=(rows[i]||[]).map(c=>String(c||""));
+    if(line.some(c=>c.includes("리조트명")) && line.some(c=>/No\.?/.test(c))){h=i;break;}
+  }
+  if(h<0) h=11; // fallback 12행
+  const hdr=(rows[h]||[]).map(c=>String(c||"").replace(/\s/g,""));
+  const col=name=>hdr.findIndex(c=>c.includes(name));
+  const cNo=col("No"), cResort=col("리조트명"), cRegion=col("지역"),
+        cType=col("타입"), cIn=col("입실일");
+  const slots=[];
+  for(let i=h+1;i<rows.length;i++){
+    const r=rows[i]||[];
+    const no=r[cNo];
+    if(no===null||no===undefined||String(no).trim()==="") continue;
+    if(!/^\d+$/.test(String(no).trim())) continue;
+    let resort=canonResort(r[cResort]);
+    let region=String(r[cRegion]||"").trim();
+    let type=String(r[cType]||"").trim();
+    // 한화: "지역 / 타입" 분리
+    if(type.includes("/")){
+      const parts=type.split("/");
+      region=parts[0].trim();
+      type=parts.slice(1).join("/").trim();
+    }
+    const din=inDate(r[cIn]);
+    slots.push({resort,region,type,in:din});
+  }
+  // (resort,region,type,in)별 정원 집계
+  const map={};
+  slots.forEach(s=>{
+    const key=[s.resort,regionKey(s.region),normType(s.type),s.in].join("§");
+    if(!map[key]) map[key]={id:key,resort:s.resort,region:s.region,type:s.type,in:s.in,quota:0,
+                            ntype:normType(s.type), rkey:regionKey(s.region)};
+    map[key].quota++;
+  });
+  STATE.slots=Object.values(map);
+  // 리조트 표시 순서 = 객실 LIST 등장 순서(파일 행 순서). 추첨 우선순위가 아니라 정렬 기준일 뿐.
+  STATE.resortOrder=[...new Set(STATE.slots.map(s=>s.resort))];
+  renderSource();
+}
+// 표시 정렬용 리조트 순번. 객실 LIST에 없는 리조트(신청서에만 등장 등)는 맨 뒤.
+function resortRank(r){
+  const i=STATE.resortOrder.indexOf(r);
+  return i<0?STATE.resortOrder.length:i;
+}
+// 집계 객체를 리조트 등장 순서대로 순회 (목록에 없는 리조트도 누락 없이 포함)
+function resortKeysInOrder(byResort){
+  return Object.keys(byResort).sort((a,b)=>(resortRank(a)-resortRank(b))||(a<b?-1:1));
+}
+function renderSource(){
+  const byResort={};
+  let total=0;
+  STATE.slots.forEach(s=>{byResort[s.resort]=(byResort[s.resort]||0)+s.quota;total+=s.quota;});
+  const chips=document.getElementById("src-chips");
+  chips.innerHTML="";
+  resortKeysInOrder(byResort).forEach(r=>{
+    chips.insertAdjacentHTML("beforeend",`<span class="chip">${esc(r)} <b>${byResort[r]}</b>박</span>`);
+  });
+  chips.insertAdjacentHTML("beforeend",`<span class="chip total">총 <b>${total}</b>박 · 신청 가능 객실 <b>${STATE.slots.length}</b></span>`);
+  const t=document.getElementById("src-table");
+  let html="<thead><tr><th>순번</th><th>리조트</th><th>지역</th><th>타입</th><th>입실일</th><th>정원</th></tr></thead><tbody>";
+  STATE.slots.slice().sort(sortSlot).forEach((s,i)=>{
+    html+=`<tr><td>${i+1}</td><td>${s.resort}</td><td>${esc(s.region)}</td><td>${esc(s.type)}</td><td>${s.in}</td><td>${s.quota}</td></tr>`;
+  });
+  t.innerHTML=html+"</tbody>";
+  document.getElementById("src-result").classList.remove("hidden");
+  enableStep("step2");
+}
+function sortSlot(a,b){
+  const ai=resortRank(a.resort),bi=resortRank(b.resort);
+  if(ai!==bi) return ai-bi;
+  if(a.resort!==b.resort) return a.resort<b.resort?-1:1;
+  if(a.region!==b.region) return a.region<b.region?-1:1;
+  if(a.in!==b.in) return a.in<b.in?-1:1;
+  return a.type<b.type?-1:1;
+}
+
+/* ============================================================
+   STEP 2 — 신청명단(첫 시트) 파싱
+   ------------------------------------------------------------
+   지망 레이아웃 2종을 자동 인식한다.
+     가로형: 1인 1행 + 'N지망' 컬럼 세트 (아래 (A)/(B)/(C) 배치 모두 허용)
+     세로형: 1인 N행 + '지망'/'순위' 컬럼(없으면 행 순서를 지망으로 간주)
+   어느 쪽이든 결과는 동일한 apps 배열이므로, 이후 단계(그룹핑·지망 정규화·
+   추첨·리포트)는 레이아웃을 전혀 알 필요가 없다.
+   ============================================================ */
+// 개인정보 컬럼 — 지망 블록이 여기까지 번지지 않도록 경계로 쓴다
+function isReservedCol(c){return /사번|성명|이름|부서|사원|소속|직급/.test(c||"");}
+/* 한 셀에 뭉친 지망 "롯데 / 부여 / 32평 / 05.01" 을 필드로 분리.
+   명시적 구분자를 우선 쓰고, 없을 때만 넓은 공백으로 나눈다 —
+   '스탠다드  더블' 처럼 값 안에 두 칸 띄어쓰기가 들어가는 실데이터를 깨뜨리지 않기 위함.
+   조각이 4개를 넘으면(타입에 구분자가 섞인 경우) 가운데를 전부 타입으로 합친다. */
+const COMBINED_DELIM=/\s*[\/|·]\s*|\s*,\s*|\s+-\s+/;
+// "05.01" / "2026-05-01" / "5월 1일" 처럼 숫자 덩이가 둘 이상이거나, 엑셀 날짜 일련번호
+function looksLikeDate(s){
+  const t=String(s||"").trim();
+  if(/^\d{5}$/.test(t)) return true;
+  return (t.match(/\d+/g)||[]).length>=2;
+}
+function splitCombined(raw){
+  let parts=raw.split(COMBINED_DELIM).map(x=>x.trim()).filter(Boolean);
+  if(parts.length<2) parts=raw.split(/\s{2,}/).map(x=>x.trim()).filter(Boolean);
+  // 리조트/지역/타입/입실일 4요소가 안 나오거나 끝이 날짜꼴이 아니면 해석 포기.
+  // 억지로 밀어넣으면 타입에 날짜가 붙은 채 조용히 전량 미매칭되므로, 실패를 드러낸다.
+  if(parts.length<3 || !looksLikeDate(parts[parts.length-1])) return null;
+  const rest=parts.slice(1);
+  const din=rest.pop();
+  return {resort:parts[0], region:rest.shift()||"", type:rest.join(" "), in:din};
+}
+/* 헤더에서 'N지망' 마커를 찾아 지망별 컬럼 블록으로 분할.
+   (A) 1지망리조트 | 1지망지역 | 1지망룸타입 | 1지망입실일 | 2지망리조트 | …
+       → 같은 지망 번호가 붙은 컬럼들이 곧 블록
+   (B) 1지망       | 지역      | 룸타입     | 입실일      | 2지망       | …
+       → 마커가 1개뿐이므로 다음 지망 마커(또는 개인정보 컬럼) 직전까지가 블록
+   (C) 1지망 | 2지망 | 3지망  (한 셀에 "리조트/지역/타입/입실일"이 뭉친 형태)  */
+function rankBlocks(hdr){
+  const byRank=new Map();
+  hdr.forEach((c,i)=>{
+    const m=/(\d+)\s*지망/.exec(c||"");
+    if(!m) return;
+    const rk=parseInt(m[1],10);
+    if(!byRank.has(rk)) byRank.set(rk,[]);
+    byRank.get(rk).push(i);
+  });
+  if(!byRank.size) return [];
+  const ranks=[...byRank.keys()].sort((a,b)=>byRank.get(a)[0]-byRank.get(b)[0]);
+  return ranks.map((rk,k)=>{
+    const cols=byRank.get(rk);
+    const start=cols[0];
+    // (A) 마커가 여럿이면 그 범위가 블록, 아니면 다음 지망 마커 직전까지
+    let end=cols.length>1 ? cols[cols.length-1]+1
+                          : (k+1<ranks.length ? byRank.get(ranks[k+1])[0] : hdr.length);
+    for(let j=start+1;j<end;j++){ if(isReservedCol(hdr[j])){end=j;break;} }
+    const find=names=>{
+      for(const n of names) for(let j=start;j<end;j++) if((hdr[j]||"").includes(n)) return j;
+      return -1;
+    };
+    const b={rank:rk,start,end,
+             cResort:find(["리조트"]), cRegion:find(["지역"]),
+             cType:find(["룸타입","객실타입","타입"]), cIn:find(["입실일","입실","날짜"])};
+    // (B): 첫 칸 헤더가 '1지망'뿐이면 그 칸이 리조트명 자리
+    if(b.cResort<0 && (b.cRegion>=0||b.cType>=0||b.cIn>=0)) b.cResort=start;
+    // (C): 어떤 필드도 못 찾으면 한 셀에 뭉친 형태로 간주
+    b.combined=(b.cResort<0&&b.cRegion<0&&b.cType<0&&b.cIn<0);
+    if(b.combined) b.cResort=start;
+    return b;
+  });
+}
+/* 가로형 1행 → 지망 개수만큼의 신청건으로 펼친다. 비어 있는 지망 칸은 건너뛴다. */
+function buildAppsWide(rows,h,blocks,base,warn){
+  const apps=[];
+  for(let i=h+1;i<rows.length;i++){
+    const r=rows[i]||[];
+    const sabun=r[base.cSabun];
+    if(!sabun||String(sabun).trim()==="") continue;
+    const sab=String(sabun).trim();
+    const name=String(r[base.cName]||"").trim(), dept=String(r[base.cDept]||"").trim();
+    blocks.forEach((b,k)=>{
+      let resort,region,type,rawIn;
+      if(b.combined){
+        const raw=String(r[b.start]==null?"":r[b.start]).trim();
+        if(!raw) return;
+        const p=splitCombined(raw);
+        if(!p){warn.splitFailCount++;return;} // 분리 불가 → 경고 후 제외
+        ({resort,region,type,in:rawIn}=p);
+      }else{
+        const cell=c=>c>=0?r[c]:null;
+        resort=cell(b.cResort); region=cell(b.cRegion);
+        type=cell(b.cType); rawIn=cell(b.cIn);
+        if(String(resort==null?"":resort).trim()==="") return; // 미기재 지망
+      }
+      if(b.rank>MAX_PREF) warn.badRankCount++;
+      apps.push({
+        sabun:sab, name, dept,
+        resort:canonResort(resort),
+        region:String(region||"").trim(),
+        type:String(type||"").trim(),
+        in:inDate(rawIn),
+        rawRank:b.rank, srcRank:b.rank, ord:i*1000+k,
+      });
+    });
+  }
+  return apps;
+}
+function parseTarget(wb){
+  const ws = wb.Sheets[wb.SheetNames[0]]; // 첫 시트 강제
+  const rows = XLSX.utils.sheet_to_json(ws,{header:1,defval:null,raw:true});
+  // 헤더 행 동적 탐색: '사번' 과 '리조트'(또는 '성명')가 함께 있는 행
+  // (시작 셀이 A1이든 B1이든, 앞에 빈 행/열이 있어도 인식되도록)
+  let h=0;
+  for(let i=0;i<rows.length;i++){
+    const line=(rows[i]||[]).map(c=>String(c||""));
+    if(line.some(c=>c.includes("사번")) && line.some(c=>c.includes("리조트")||c.includes("성명"))){h=i;break;}
+  }
+  const hdr=(rows[h]||[]).map(c=>String(c||"").replace(/\s/g,""));
+  const col=name=>hdr.findIndex(c=>c.includes(name));
+  const cSabun=col("사번"),cName=col("성명"),cDept=col("부서명");
+  const warn={overflowPersons:0,droppedCount:0,badRankCount:0,splitFailCount:0,
+              blankRankCount:0,dupRankPersons:0};
+
+  // ── 가로형 먼저 시도 ('N지망' 마커가 있을 때만). 신청건이 하나도 안 나오면 세로형으로 폴백 ──
+  const blocks=rankBlocks(hdr);
+  let apps = blocks.length ? buildAppsWide(rows,h,blocks,{cSabun,cName,cDept},warn) : [];
+  if(apps.length){
+    STATE.prefMode="wide";
+    STATE.rankColName="";
+    STATE.declaredRanks=Math.min(MAX_PREF,Math.max(...blocks.map(b=>b.rank)));
+  }else{
+    // ── 세로형: 1인 N행. '우선순위' → '지망' → '순위' 컬럼 순으로 탐색, 없으면 행 순서로 대체 ──
+    // col()이 부분일치이므로 가장 구체적인 이름부터 찾는다 ('우선순위'와 별개의 '순위' 컬럼 공존 대비)
+    warn.splitFailCount=0; warn.badRankCount=0; warn.blankRankCount=0; warn.dupRankPersons=0;
+    STATE.declaredRanks=0;
+    const cResort=col("리조트"),cRegion=col("지역"),cType=col("룸타입"),cIn=col("입실일");
+    let cRank=col("우선순위");
+    if(cRank<0) cRank=col("지망");
+    if(cRank<0) cRank=col("순위");
+    STATE.rankColName = cRank>=0 ? hdr[cRank] : "";
+    STATE.prefMode = cRank>=0 ? "column" : "roworder";
+    apps=[];
+    const seqBySabun={};   // 사번별 등장 순번 (행순서 대체 및 컬럼 결측 보완용)
+    for(let i=h+1;i<rows.length;i++){
+      const r=rows[i]||[];
+      const sabun=r[cSabun];
+      if(!sabun||String(sabun).trim()==="") continue;
+      const sab=String(sabun).trim();
+      const seq=(seqBySabun[sab]=(seqBySabun[sab]||0)+1);
+      let rawRank=Infinity, srcRank=null;   // srcRank = 사용자가 실제로 적어 넣은 값 (없으면 null)
+      if(cRank>=0){
+        const v=parseInt(r[cRank],10);
+        // 직접 적어 넣은 지망번호만 오입력으로 집계 (행 순서 대체분은 사용자 입력이 아님)
+        if(Number.isFinite(v)&&v>=1){ rawRank=v; srcRank=v; if(v>MAX_PREF) warn.badRankCount++; }
+        else warn.blankRankCount++;   // 순위 컬럼은 있는데 빈칸/0/음수/비숫자 → 아래에서 행 순서로 대체
+      }
+      if(rawRank===Infinity) rawRank=seq;   // 컬럼 없음/빈 셀/비숫자 → 행 순서
+      apps.push({
+        sabun:sab,
+        name:String(r[cName]||"").trim(),
+        dept:String(r[cDept]||"").trim(),
+        resort:canonResort(r[cResort]),
+        region:String(r[cRegion]||"").trim(),
+        type:String(r[cType]||"").trim(),
+        in:inDate(r[cIn]),
+        rawRank, srcRank, ord:i,
+      });
+    }
+  }
+  STATE.apps=apps;
+  // 신청건 → 그룹 (resort,regionKey,ntype,in)
+  const groups={};
+  apps.forEach(a=>{
+    const gk=[a.resort,regionKey(a.region),normType(a.type),a.in].join("§");
+    if(!groups[gk]) groups[gk]={key:gk,resort:a.resort,region:a.region,type:a.type,in:a.in,
+                                ntype:normType(a.type),rkey:regionKey(a.region),sabuns:new Set(),apps:[]};
+    a.gk=gk;
+    groups[gk].apps.push(a);
+    groups[gk].sabuns.add(a.sabun);
+  });
+  STATE.groups=groups;
+  // 사번 -> [{gk, rank, ord, app}] — 유효지망(1..MAX_PREF) 정규화
+  // 같은 그룹 중복 신청은 best rawRank(동률이면 앞 행) 1건만 유지하고,
+  // (rawRank, 행순서) 정렬 후 1..n으로 dense 재부여 → 중복/결측/건너뛴 순위 흡수.
+  // 재부여 후 MAX_PREF를 넘는 뒷순위는 잘라내고 경고로 집계한다.
+  const prefs={};
+  apps.forEach(a=>{(prefs[a.sabun]=prefs[a.sabun]||[]).push(a);});
+  let maxRank=0;
+  Object.keys(prefs).forEach(s=>{
+    const byGk={};
+    prefs[s].forEach(a=>{
+      const cur=byGk[a.gk];
+      if(!cur||a.rawRank<cur.rawRank||(a.rawRank===cur.rawRank&&a.ord<cur.ord)) byGk[a.gk]=a;
+    });
+    const list=Object.values(byGk).sort((x,y)=>(x.rawRank-y.rawRank)||(x.ord-y.ord));
+    // 서로 다른 신청건에 같은 순위 번호를 적은 오입력 집계 (같은 그룹 중복은 위 byGk에서 이미 1건으로 합쳐짐).
+    // roworder 모드는 rawRank=행 순번이라 중복이 생길 수 없으므로 검사하지 않는다.
+    if(STATE.prefMode==="column"){
+      const seenRank=new Set();
+      if(list.some(a=>seenRank.size===seenRank.add(a.rawRank).size)) warn.dupRankPersons++;
+    }
+    if(list.length>MAX_PREF){ warn.overflowPersons++; warn.droppedCount+=list.length-MAX_PREF; }
+    prefs[s]=list.slice(0,MAX_PREF).map((a,idx)=>({gk:a.gk,rank:idx+1,ord:a.ord,app:a}));
+    if(prefs[s].length>maxRank) maxRank=prefs[s].length;
+  });
+  STATE.prefs=prefs;
+  STATE.maxRank=Math.max(maxRank,STATE.declaredRanks||0);
+  STATE.prefWarn=(warn.overflowPersons||warn.badRankCount||warn.splitFailCount
+                  ||warn.blankRankCount||warn.dupRankPersons)?warn:null;
+  renderTargetChips();
+  autoMatch();
+  renderMatch();
+  enableStep("step3");
+}
+function renderTargetChips(){
+  const byResort={};
+  STATE.apps.forEach(a=>{byResort[a.resort]=(byResort[a.resort]||0)+1;});
+  const uniq=new Set(STATE.apps.map(a=>a.sabun)).size;
+  const chips=document.getElementById("tgt-chips");
+  chips.innerHTML="";
+  resortKeysInOrder(byResort).forEach(r=>chips.insertAdjacentHTML("beforeend",`<span class="chip">${esc(r)} <b>${byResort[r]}</b>건</span>`));
+  chips.insertAdjacentHTML("beforeend",`<span class="chip total">총 <b>${STATE.apps.length}</b>신청건 · <b>${uniq}</b>명</span>`);
+  const modeLabel={wide:"가로형(1~N지망 컬럼)",
+                   column:`세로형(${esc(STATE.rankColName||"순위")} 컬럼)`,
+                   roworder:"세로형(행 순서)"}[STATE.prefMode]||"-";
+  chips.insertAdjacentHTML("beforeend",`<span class="chip">지망 인식 <b>${modeLabel}</b></span>`);
+  chips.insertAdjacentHTML("beforeend",`<span class="chip">최대 지망 수 <b>${STATE.maxRank}</b></span>`);
+  const w=STATE.prefWarn;
+  if(w){
+    const msg=[];
+    if(w.overflowPersons) msg.push(`${MAX_PREF}지망 초과 제외 ${w.overflowPersons}명 / ${w.droppedCount}건`);
+    if(w.badRankCount) msg.push(`우선순위 ${MAX_PREF} 초과 입력 ${w.badRankCount}건`);
+    if(w.blankRankCount) msg.push(`우선순위 빈값·비숫자 ${w.blankRankCount}건(행 순서로 대체)`);
+    if(w.dupRankPersons) msg.push(`우선순위 중복 ${w.dupRankPersons}명`);
+    if(w.splitFailCount) msg.push(`지망 셀 해석 실패 ${w.splitFailCount}건`);
+    chips.insertAdjacentHTML("beforeend",`<span class="chip warn-chip">⚠ ${esc(msg.join(" · "))}</span>`);
+  }
+  document.getElementById("tgt-result").classList.remove("hidden");
+}
+
+/* ============================================================
+   매칭 (자동 정규화 + 후보 추천)
+   ============================================================ */
+// 지역 토큰 겹침 비율(공백/구분 무시). 모든 한글 글자 bigram Dice로 비교해
+// "스플라스 리솜" vs "스플라스리솜" 같은 띄어쓰기 차이를 흡수한다.
+function regionScore(a,b){
+  if(!a||!b) return 0.5; // 한쪽이라도 비면 중립
+  return dice(a.replace(/\|/g,""),b.replace(/\|/g,""));
+}
+function autoMatch(){
+  const groups=Object.values(STATE.groups);
+  const used=new Set();
+  STATE.matchMap={};
+  STATE.matchStatus={};
+  // 같은 (리조트,타입,입실일) 묶음으로 후보 인덱싱 — 지역 명칭 차이를 1차 키에서 배제
+  const byRT={};
+  groups.forEach(g=>{const k=g.resort+"§"+g.ntype+"§"+g.in;(byRT[k]=byRT[k]||[]).push(g);});
+
+  // 1차: (리조트,타입,입실일) 정확 일치 → 지역 점수로 best 선택
+  STATE.slots.forEach(s=>{
+    const cands=(byRT[s.resort+"§"+s.ntype+"§"+s.in]||[]).filter(g=>!used.has(g.key));
+    if(!cands.length){STATE.matchMap[s.id]=null;STATE.matchStatus[s.id]="none";return;}
+    let best=cands[0],bs=-1;
+    cands.forEach(g=>{const sc=regionScore(s.rkey,g.rkey);if(sc>bs){bs=sc;best=g;}});
+    // 후보가 하나뿐이거나 지역이 충분히 닮으면 자동, 아니면 추천
+    const status=(cands.length===1||bs>=0.5)?"auto":"sug";
+    STATE.matchMap[s.id]=best.key;STATE.matchStatus[s.id]=status;used.add(best.key);
+  });
+  // 2차: 1차 실패분 → 같은 리조트+입실일에서 타입 유사도 best (추천)
+  // 전역 최고점수 우선 배정: 슬롯 등장 순서가 아니라 (슬롯,그룹) 모든 쌍을
+  // 점수 내림차순으로 확정해, 약하게 맞는 슬롯이 강하게 맞는 슬롯의 그룹을
+  // 선점하는 오배정을 방지한다.
+  const pairs=[];
+  STATE.slots.forEach(s=>{
+    if(STATE.matchMap[s.id]) return;
+    groups.forEach(g=>{
+      if(g.resort!==s.resort||g.in!==s.in) return;
+      const sc=dice(s.ntype,g.ntype)*0.7+regionScore(s.rkey,g.rkey)*0.3;
+      if(sc>=0.4) pairs.push({sid:s.id,gk:g.key,sc});
+    });
+    STATE.matchMap[s.id]=null;STATE.matchStatus[s.id]="none";
+  });
+  pairs.sort((a,b)=>b.sc-a.sc);
+  pairs.forEach(p=>{
+    if(STATE.matchMap[p.sid]||used.has(p.gk)) return;
+    STATE.matchMap[p.sid]=p.gk;STATE.matchStatus[p.sid]="sug";used.add(p.gk);
+  });
+}
+
+function groupOptionsFor(slot, currentKey){
+  // 후보: 같은 리조트 + 같은 입실일 + 매칭 가능성 있는(종합점수>0) 그룹만.
+  // 현재 선택된 그룹은 점수/날짜와 무관하게 항상 포함(수동 지정 보존).
+  const usedByOther=new Set(Object.entries(STATE.matchMap)
+        .filter(([sid,gk])=>gk && sid!==slot.id).map(([,gk])=>gk));
+  const opts=Object.values(STATE.groups)
+    .filter(g=>g.resort===slot.resort && (g.in===slot.in || g.key===currentKey))
+    .map(g=>{
+      const sc=dice(slot.ntype,g.ntype)*0.7+regionScore(slot.rkey,g.rkey)*0.3;
+      return {g,sc,taken:usedByOther.has(g.key)};
+    })
+    .filter(o=>o.sc>0 || o.g.key===currentKey)
+    .sort((a,b)=>b.sc-a.sc);
+  return opts;
+}
+
+function renderMatch(){
+  const norm=x=>String(x||"").toLowerCase().replace(/[\s/().,_·-]+/g,"");
+  const filter=norm(document.getElementById("match-filter").value);
+  const onlyIssue=document.getElementById("only-issue").checked;
+  const t=document.getElementById("match-table");
+  let html="<thead><tr><th>순번</th><th>상태</th><th>리조트</th><th>지역</th><th>타입(객실)</th><th>입실일</th>"
+          +"<th>정원</th><th>매칭된 신청그룹 (신청자수)</th></tr></thead><tbody>";
+  let cAuto=0,cSug=0,cNone=0,cEmpty=0;
+  let rowNo=0;
+  // 어떤 슬롯에든 이미 배정된 신청그룹
+  const usedGroups=new Set(Object.values(STATE.matchMap).filter(Boolean));
+  const slots=STATE.slots.slice().sort(sortSlot);
+  slots.forEach(s=>{
+    const gk=STATE.matchMap[s.id];
+    const g=gk?STATE.groups[gk]:null;
+    const nApp=g?g.sabuns.size:0;
+    let st=STATE.matchStatus[s.id];
+    if(gk && nApp===0) st="empty";
+    if(!gk){
+      // 같은 (리조트,입실일)에 아직 안 쓰인 신청그룹이 있으면 검수 대상(미매칭),
+      // 하나도 없으면 그 날짜에 신청자 자체가 없는 빈 객실(신청없음)
+      const hasSameDate=Object.values(STATE.groups).some(
+        gg=>gg.resort===s.resort && gg.in===s.in && !usedGroups.has(gg.key));
+      st = hasSameDate ? "none" : "empty";
+    }
+    // 통계
+    if(st==="auto")cAuto++;else if(st==="sug")cSug++;else if(st==="empty")cEmpty++;else cNone++;
+    // 필터
+    const hay=norm(s.resort+s.region+s.type+s.in);
+    if(filter && !hay.includes(filter)) return;
+    if(onlyIssue && !filter && (st==="auto"||st==="empty")) return;
+
+    const badge={auto:'<span class="badge b-auto">자동</span>',
+                 sug:'<span class="badge b-sug">추천</span>',
+                 none:'<span class="badge b-none">미매칭</span>',
+                 empty:'<span class="badge b-empty">신청없음</span>'}[st];
+    // 드롭다운
+    const opts=groupOptionsFor(s,gk);
+    let sel=`<select data-slot="${esc(s.id)}"><option value="">— 신청없음(미배정) —</option>`;
+    opts.forEach(o=>{
+      const dateWarn = o.g.in!==s.in ? " ⚠날짜다름("+o.g.in+")" : "";
+      const label=`${esc(o.g.type)} / ${esc(o.g.region)}${o.taken?" ⚠중복":""}${dateWarn}`;
+      sel+=`<option value="${esc(o.g.key)}" ${o.g.key===gk?"selected":""}>${label}</option>`;
+    });
+    sel+="</select>";
+    rowNo++;
+    html+=`<tr><td>${rowNo}</td><td>${badge}</td><td>${s.resort}</td><td>${esc(s.region)}</td><td><b>${esc(s.type)}</b></td>`
+        +`<td>${s.in}</td><td>${s.quota}</td><td>${sel} <span class="mini">${nApp?nApp+"명":""}</span></td></tr>`;
+  });
+  t.innerHTML=html+"</tbody>";
+  // summary
+  document.getElementById("match-summary").innerHTML=
+     card("자동 매칭",cAuto,"ok")+card("추천(검수)",cSug,cSug?"warn":"")
+    +card("미매칭",cNone,cNone?"bad":"")+card("신청없음(빈객실)",cEmpty,"");
+  // bind selects
+  t.querySelectorAll("select").forEach(se=>{
+    se.addEventListener("change",e=>{
+      const sid=e.target.getAttribute("data-slot");
+      STATE.matchMap[sid]=e.target.value||null;
+      STATE.matchStatus[sid]=e.target.value?"auto":"none";
+      renderMatch();
+    });
+  });
+}
+function card(k,v,cls){return `<div class="card"><div class="k">${k}</div><div class="v ${cls||""}">${v}</div></div>`;}
+
+document.getElementById("match-filter").addEventListener("input",renderMatch);
+document.getElementById("only-issue").addEventListener("change",renderMatch);
+
+document.getElementById("btn-confirm").addEventListener("click",()=>{
+  // 중복 그룹 사용 체크
+  const seen={},dup=[];
+  Object.entries(STATE.matchMap).forEach(([sid,gk])=>{
+    if(!gk) return;
+    if(seen[gk]) dup.push(gk); else seen[gk]=sid;
+  });
+  const note=document.getElementById("match-note");
+  if(dup.length){
+    note.innerHTML=`<span class="bad-txt">⚠ 같은 신청그룹이 ${dup.length}개 객실에 중복 연결되어 있습니다. 같은 그룹이 여러 객실 정원을 공유하는 게 맞다면 그대로 진행해도 됩니다.</span>`;
+  }else{
+    note.innerHTML=`<span class="ok-txt">✔ 매칭 확정. 추첨을 진행하세요.</span>`;
+  }
+  enableStep("step4");
+  window.scrollTo({top:document.getElementById("step4").offsetTop-20,behavior:"smooth"});
+});
+
+/* ============================================================
+   STEP 4 — 추첨 엔진
+   ============================================================ */
+function secureShuffle(arr){
+  const a=arr.slice();
+  for(let i=a.length-1;i>0;i--){
+    const rnd=crypto.getRandomValues(new Uint32Array(1))[0]/4294967296;
+    const j=Math.floor(rnd*(i+1));
+    [a[i],a[j]]=[a[j],a[i]];
+  }
+  return a;
+}
+/* ════════════════════════════════════════════════════════════
+   ── [안별 분기] B안 ──
+   2박 대상 자리 = "그 자리를 지망한 낙첨자가 0명인 자리".
+   별도 판정 코드가 없다 — 페널티 M이 "낙첨자가 있으면 2박은 나가지 않는다"를
+   수학적으로 보장하므로, 2박 유닛을 모든 후보에 연결해도 결과가 그 정의와 일치한다.
+   빈방이 가장 적게 남는 안. 대신 경쟁을 뚫고 당첨된 사람도 2박을 받을 수 있고,
+   같은 자리를 원하는 2박 후보가 여럿이면 지망 순위 → 무작위로 갈린다.
+   ════════════════════════════════════════════════════════════ */
+const VARIANT={
+  code:"B",
+  rule:"1인 최대 2객실 — 2박째는 그 자리를 지망한 낙첨자가 0명일 때만 배정",
+  note:"낙첨자가 한 명이라도 그 자리를 지망했다면 2박은 절대 배정되지 않습니다. "+
+       "같은 자리를 원하는 2박 후보가 여럿이면 지망 순위가 높은 사람 → 동률이면 무작위. "+
+       "경쟁을 뚫고 1박에 당첨된 사람도 2박 후보가 됩니다.",
+  file:"추첨_결과_v4B.xlsx",
+};
+document.getElementById("variant-rule").innerHTML=
+  `<b>[${VARIANT.code}안] ${esc(VARIANT.rule)}</b><br>${esc(VARIANT.note)}`;
+/* 자격 판정에 필요한 사전 계산 (B안은 없음) */
+function variantContext(slots,slotsByGk){ return null; }
+/* 후보 c를 2박(2건째)으로 받을 수 있는가 */
+function allow2nd(c,ctx){ return true; }
+/* 미충원 슬롯의 사유 — 신청자는 있는데 비어 있는 경우 */
+function variantUnfilledNote(r,R){ return "지망자 전원 배정 완료(1인 2건 상한)"; }
+
+/* ============================================================
+   최소비용 최대유량(SSP/SPFA) 솔버 — v3의 루프를 그대로 뽑아낸 것.
+   그래프 구성만 호출부에서 달라지므로 본 추첨과 자가검증이 같은 코드를 쓴다.
+   간선 저장: 짝수/홀수 쌍 배열 — 역방향 간선은 항상 ei^1
+   ============================================================ */
+function mcmf(N){
+  const eTo=[],eCap=[],eCost=[];
+  const graph=Array.from({length:N},()=>[]);
+  function addEdge(u,v,cap,cost){
+    const ei=eTo.length;
+    graph[u].push(ei);eTo.push(v);eCap.push(cap);eCost.push(cost);
+    graph[v].push(ei+1);eTo.push(u);eCap.push(0);eCost.push(-cost);
+    return ei;
+  }
+  function run(SRC,SINK){
+    while(true){
+      const dist=new Array(N).fill(Infinity),inq=new Array(N).fill(false),prevE=new Array(N).fill(-1);
+      dist[SRC]=0;const q=[SRC];inq[SRC]=true;
+      while(q.length){
+        const u=q.shift();inq[u]=false;
+        for(const ei of graph[u]){
+          if(eCap[ei]<=0)continue;
+          const v=eTo[ei],nd=dist[u]+eCost[ei];
+          if(nd<dist[v]){dist[v]=nd;prevE[v]=ei;if(!inq[v]){inq[v]=true;q.push(v);}}
+        }
+      }
+      if(dist[SINK]===Infinity)break; // 증대경로 없음 = 최대유량 도달
+      for(let v=SINK;v!==SRC;){const ei=prevE[v];eCap[ei]--;eCap[ei^1]++;v=eTo[ei^1];}
+    }
+  }
+  return {addEdge,run,cap:eCap};
+}
+
+/* 사람별 후보 목록 구성 — 셔플이 동률 최적해 사이의 무작위 선택을 담당한다.
+   반환: {persons:[사번], candsOf:[[{si,gk,rank,app,sabun}]], slotsByGk} */
+function buildCandidates(slots){
+  // 그룹 → 슬롯 역인덱스 (한 그룹이 여러 슬롯 정원을 공유할 수 있음)
+  const slotsByGk={};
+  slots.forEach((s,si)=>{const gk=STATE.matchMap[s.id];if(gk)(slotsByGk[gk]=slotsByGk[gk]||[]).push(si);});
+  const persons=secureShuffle(
+    Object.keys(STATE.prefs).filter(s=>STATE.prefs[s].some(p=>slotsByGk[p.gk])));
+  const candsOf=persons.map(sab=>{
+    const cands=[];
+    STATE.prefs[sab].forEach(p=>(slotsByGk[p.gk]||[]).forEach(si=>
+      cands.push({si,gk:p.gk,rank:p.rank,app:p.app,sabun:sab})));
+    return secureShuffle(cands);
+  });
+  return {persons,candsOf,slotsByGk};
+}
+
+/* v3와 동일한 1인 1건 MCMF. 당첨된 후보 배열을 돌려준다.
+   quotaOf(si)로 슬롯 정원을 갈아끼울 수 있어 잔여 정원 재배정에도 그대로 쓴다.
+   (한 사람의 후보 목록에는 같은 si가 두 번 나올 수 없다 — matchMap이 슬롯→그룹
+    단사이고 prefs는 그룹당 1건이므로, 사람 간선 cap 1만으로 중복이 차단된다.) */
+function solveSingle(slots,persons,candsOf,quotaOf){
+  const P=persons.length,S=slots.length,SRC=0,SL0=1+P,SINK=1+P+S;
+  const G=mcmf(SINK+1),edges=[];
+  persons.forEach((sab,pi)=>{
+    G.addEdge(SRC,1+pi,1,0);
+    candsOf[pi].forEach(c=>edges.push({ei:G.addEdge(1+pi,SL0+c.si,1,c.rank),c}));
+  });
+  slots.forEach((s,si)=>G.addEdge(SL0+si,SINK,quotaOf?quotaOf(si):s.quota,0));
+  G.run(SRC,SINK);
+  return edges.filter(e=>G.cap[e.ei]===0).map(e=>e.c);
+}
+
+/* 1인 1건(v3 규칙) 기준 최대 당첨 인원. 최대유량이므로 v4가 이 값을 넘을 수 없고,
+   밑돌면 "2박이 누군가의 1박을 밀어냈다"는 뜻이라 버그다 — 자가검증 기준값. */
+function maxDistinctWinners(slots,persons,candsOf){
+  return solveSingle(slots,persons,candsOf).length;
+}
+
+/* ============================================================
+   추첨 엔진 v4 — 1인 최대 2건(2박)
+   ------------------------------------------------------------
+   v3(1인 1건)와의 유일한 구조 차이는 사람 노드를 "1박 유닛(Pa)"과
+   "2박 유닛(Pb)"으로 쪼갠 것이다. Pb 간선에 페널티 M을 걸면 최소비용해가
+   ① 2박 건수 최소화(= 당첨 인원 최대화) → ② 지망 합 최소화 순으로 정렬되어,
+   2박이 누군가의 1박을 밀어내는 일이 구조적으로 불가능해진다.
+
+     SRC --(1, 0)--> Pa[p]                1박 유닛
+     SRC --(1, M)--> Pb[p]                2박 유닛(페널티)
+     Pa[p] --(1, rank)--> X[p][c]         모든 후보
+     Pb[p] --(1, rank)--> X[p][c]         2박 자격이 있는 후보만  ← [안별 분기]
+     X[p][c] --(1, 0)--> slot[c.si]       (사람,슬롯) 중복 당첨 차단
+     slot[si] --(quota, 0)--> SINK
+
+   ※ 단순히 SRC→사람 용량을 2로 올리면 이 성질이 깨진다. 비용이 rank 단일 항이라
+      갑의 2박째 1지망(비용 1)이 을의 첫 당첨 3지망(비용 3)보다 싸서, MCMF가
+      을을 낙첨시키고 갑에게 2건을 주는 해를 "최적"으로 고른다(총 유량 동일).
+   ============================================================ */
+function draw(){
+  // 슬롯 정렬은 결과 표시 순서용일 뿐 — 추첨 우선순위와 무관하다.
+  const slots=STATE.slots.slice().sort(sortSlot);
+  const S=slots.length;
+  const {persons,candsOf,slotsByGk}=buildCandidates(slots);
+  const P=persons.length;
+  const totalQuota=slots.reduce((n,x)=>n+x.quota,0);
+
+  // 2박 페널티: 어떤 rank 재배치보다도 크게. 상수 하드코딩 금지 — 정원이 커지면 깨진다.
+  const M=totalQuota*MAX_PREF+1;
+
+  const ctx=variantContext(slots,slotsByGk); // [안별 분기] 자격 판정에 필요한 사전 계산
+
+  // 노드 배치
+  const totCand=candsOf.reduce((n,c)=>n+c.length,0);
+  const SRC=0,A0=1,B0=1+P,SL0=1+2*P,C0=1+2*P+S,SINK=C0+totCand;
+  const G=mcmf(SINK+1);
+  const candEdges=[]; // {ei: 중간노드→슬롯 간선, c: 후보}
+  let ci=0;
+  persons.forEach((sab,pi)=>{
+    G.addEdge(SRC,A0+pi,1,0);                          // 1박 유닛
+    const cands2=candsOf[pi].filter(c=>allow2nd(c,ctx)); // [안별 분기]
+    if(cands2.length) G.addEdge(SRC,B0+pi,1,M);        // 2박 유닛
+    candsOf[pi].forEach(c=>{
+      const node=C0+ci;ci++;
+      G.addEdge(A0+pi,node,1,c.rank);
+      if(allow2nd(c,ctx)) G.addEdge(B0+pi,node,1,c.rank);
+      candEdges.push({ei:G.addEdge(node,SL0+c.si,1,0),c});
+    });
+  });
+  slots.forEach((s,si)=>G.addEdge(SL0+si,SINK,s.quota,0));
+  G.run(SRC,SINK);
+
+  // 결과 추출: flow가 흐른(cap 1→0) 중간노드→슬롯 간선
+  const rawWins=[];
+  candEdges.forEach(e=>{if(G.cap[e.ei]===0)rawWins.push(e.c);});
+
+  // 차수 표기. Pa/Pb 두 유닛은 같은 후보 노드로 들어가므로 어느 쪽이 흘렀는지로는
+  // 구분할 수 없다(비용이 같아 임의로 갈린다). 대신 "2건 중 지망이 나쁜 쪽이 2박"으로
+  // 표기하되, 그쪽이 2박 자격이 없는 자리라면(A안의 경쟁 슬롯) 자격이 있는 쪽이
+  // 실제 추가 당첨이므로 그쪽을 2박으로 표기한다. 2건이면 최소 한쪽은 반드시 자격이 있다.
+  const bySabun={};
+  rawWins.forEach(w=>(bySabun[w.sabun]=bySabun[w.sabun]||[]).push(w));
+  Object.values(bySabun).forEach(list=>{
+    list.sort((a,b)=>a.rank-b.rank);
+    if(list.length<2){list.forEach(w=>{w.seq=1;});return;}
+    const second=allow2nd(list[1],ctx)?list[1]:list[0];
+    list.forEach(w=>{w.seq=(w===second)?2:1;});
+  });
+
+  const winners=[],slotResults=[],rankStats={},rankStats2={},won=new Set();
+  const winnersBySlot=Array.from({length:S},()=>[]);
+  rawWins.forEach(w=>winnersBySlot[w.si].push(w));
+  slots.forEach((slot,si)=>{
+    const res={slot,quota:slot.quota,winners:[],filled:0};
+    winnersBySlot[si].forEach(w=>{
+      won.add(w.sabun);
+      res.winners.push(w.app);
+      winners.push({slot,app:w.app,rank:w.rank,seq:w.seq});
+      const st=(w.seq===1?rankStats:rankStats2);
+      st[w.rank]=(st[w.rank]||0)+1;
+    });
+    res.filled=res.winners.length;
+    slotResults.push(res);
+  });
+
+  // 낙첨자: 신청은 했으나 끝까지 미당첨인 고유 인원
+  const allSabun={}; // sabun -> app(any) for name
+  STATE.apps.forEach(a=>{if(!allSabun[a.sabun])allSabun[a.sabun]=a;});
+  const losers=Object.values(allSabun).filter(a=>!won.has(a.sabun));
+
+  // ── 자가검증: 매 추첨마다 불변식 확인 ──
+  const problems=[];
+  Object.keys(bySabun).forEach(sab=>{
+    const list=bySabun[sab];
+    if(list.length>2) problems.push(`${sab}: ${list.length}건 당첨 — 1인 2건 상한 위반`);
+    if(new Set(list.map(w=>w.si)).size!==list.length) problems.push(`${sab}: 동일 슬롯 중복 당첨`);
+  });
+  const winnerCount=Object.keys(bySabun).length;
+  const baseCount=maxDistinctWinners(slots,persons,candsOf);
+  if(winnerCount<baseCount)
+    problems.push(`당첨 인원 ${winnerCount}명 < 1인1건 기준 최대 ${baseCount}명 — 2박이 1박을 밀어냄`);
+  if(problems.length) console.error("[추첨 자가검증 실패]",problems);
+
+  STATE.result={winners,slotResults,losers,rankStats,rankStats2,
+                winnerCount,dualCount:Object.values(bySabun).filter(l=>l.length>1).length,
+                baseCount,problems,ctx};
+  renderResult();
+  enableStep("step5");
+}
+
+/* ============================================================
+   STEP 5 — 결과 렌더 / 다운로드
+   ============================================================ */
+/* 미충원 사유 — 화면 탭과 엑셀 시트가 같은 문장을 쓰도록 한 곳에서 관리한다. */
+function unfilledReason(r,R){
+  const gk=STATE.matchMap[r.slot.id];
+  if(!gk) return "신청자 없음(미매칭)";
+  if(!STATE.groups[gk]||STATE.groups[gk].sabuns.size===0) return "지망한 사람 없음";
+  return variantUnfilledNote(r,R); // [안별 분기]
+}
+function renderResult(){
+  const R=STATE.result;
+  const totalQuota=STATE.slots.reduce((s,x)=>s+x.quota,0);
+  const filled=R.winners.length;   // 건수(인원 아님) — 미충원 계산 기준
+  const unfilled=totalQuota-filled;
+  document.getElementById("result-warn").innerHTML=
+    R.problems.length
+      ? `<div class="warn-box"><b>⚠ 자가검증 실패 — 결과를 사용하지 마세요</b><br>${R.problems.map(esc).join("<br>")}</div>`
+      : "";
+  document.getElementById("result-summary").innerHTML=
+      card("총 정원",totalQuota,"")
+     +card("당첨 건수",filled,"ok")
+     +card("당첨 인원",R.winnerCount,"ok")
+     +card("2박 인원",R.dualCount,R.dualCount?"ok":"")
+     +card("미충원 자리",unfilled,unfilled?"warn":"")
+     +card("낙첨 인원",R.losers.length,"")
+     // 당첨 0명인 지망도 빠뜨리지 않고 1..maxRank 전부 표시
+     +Array.from({length:STATE.maxRank},(_,i)=>i+1).map(r=>
+        card(r+"지망 당첨",R.rankStats[r]||0,r===1?"ok":"")).join("")
+     +(R.dualCount?Array.from({length:STATE.maxRank},(_,i)=>i+1).map(r=>
+        card("2박 "+r+"지망",R.rankStats2[r]||0,"")).join(""):"")
+     +card("지망 기준",{wide:"가로형",column:"지망 컬럼",roworder:"행순서"}[STATE.prefMode]||"-","");
+
+  // 탭
+  const tabs=[["win","🏆 당첨자 ("+filled+"건 / "+R.winnerCount+"명)"],["unfilled","⚠ 미충원 ("+unfilled+")"],
+              ["lose","❌ 낙첨 ("+R.losers.length+")"]];
+  const tb=document.getElementById("result-tabs");
+  tb.innerHTML=tabs.map((t,i)=>`<div class="tab ${i===0?'active':''}" data-tab="${t[0]}">${t[1]}</div>`).join("");
+  tb.querySelectorAll(".tab").forEach(el=>el.addEventListener("click",()=>{
+    tb.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
+    el.classList.add("active");
+    ["win","unfilled","lose"].forEach(n=>
+      document.getElementById("tab-"+n).classList.toggle("hidden",n!==el.getAttribute("data-tab")));
+  }));
+
+  // 당첨자 (녹화모드 시 객실정보 모자이크)
+  const mz=STATE.recordMode?' class="mosaic"':'';
+  let h='<div class="scroll"><table><thead><tr><th>순번</th><th>리조트</th><th>지역</th><th>객실타입</th><th>입실일</th>'
+       +'<th>사번</th><th>성명</th><th>부서</th><th>당첨지망</th><th>차수</th></tr></thead><tbody>';
+  R.winners.slice().sort((a,b)=>sortSlot(a.slot,b.slot)).forEach((w,i)=>{
+    h+=`<tr><td>${i+1}</td><td${mz}>${w.slot.resort}</td><td${mz}>${esc(w.slot.region)}</td><td${mz}>${esc(w.slot.type)}</td>`
+      +`<td${mz}>${w.slot.in}</td><td>${esc(w.app.sabun)}</td><td>${esc(w.app.name)}</td><td>${esc(w.app.dept)}</td><td>${w.rank}지망</td>`
+      +`<td>${w.seq===2?'<b class="warn-txt">2박</b>':'1박'}</td></tr>`;
+  });
+  document.getElementById("tab-win").innerHTML=h+"</tbody></table></div>";
+
+  // 미충원
+  let u='<div class="scroll"><table><thead><tr><th>순번</th><th>리조트</th><th>지역</th><th>객실타입</th><th>입실일</th>'
+       +'<th>정원</th><th>당첨</th><th>미충원</th><th>사유</th></tr></thead><tbody>';
+  R.slotResults.filter(r=>r.filled<r.quota).sort((a,b)=>sortSlot(a.slot,b.slot)).forEach((r,i)=>{
+    const reason=unfilledReason(r,R);
+    u+=`<tr><td>${i+1}</td><td>${r.slot.resort}</td><td>${esc(r.slot.region)}</td><td>${esc(r.slot.type)}</td><td>${r.slot.in}</td>`
+      +`<td>${r.quota}</td><td>${r.filled}</td><td class="warn-txt">${r.quota-r.filled}</td><td>${reason}</td></tr>`;
+  });
+  document.getElementById("tab-unfilled").innerHTML=u+"</tbody></table></div>";
+
+  // 낙첨
+  let l='<div class="scroll"><table><thead><tr><th>순번</th><th>사번</th><th>성명</th><th>부서</th></tr></thead><tbody>';
+  R.losers.slice().sort((a,b)=>a.sabun<b.sabun?-1:1).forEach((a,i)=>{
+    l+=`<tr><td>${i+1}</td><td>${esc(a.sabun)}</td><td>${esc(a.name)}</td><td>${esc(a.dept)}</td></tr>`;
+  });
+  document.getElementById("tab-lose").innerHTML=l+"</tbody></table></div>";
+
+  document.getElementById("btn-redraw").disabled=false;
+}
+
+/* ---------- 다운로드 ---------- */
+function downloadSheets(sheets, filename){ // sheets = [{name, rows}]
+  const wb=XLSX.utils.book_new();
+  sheets.forEach(s=>{
+    const ws=XLSX.utils.json_to_sheet(s.rows.length?s.rows:[s.empty||{}]);
+    XLSX.utils.book_append_sheet(wb,ws,s.name);
+  });
+  XLSX.writeFile(wb,filename);
+}
+/* 신청서에 실제로 적혀 있던 우선순위 값. 당첨지망(1..n으로 재부여된 값)과 다를 수 있다 —
+   1지망을 비우거나 번호를 건너뛴 경우 앞으로 당겨지기 때문. 행 순서로 대체된 건은 사용자 입력이
+   아니므로 값 대신 '행순서'로 표기해 원본과 혼동되지 않게 한다. */
+function srcRankText(app){
+  return app && app.srcRank!=null ? String(app.srcRank) : "행순서";
+}
+document.getElementById("btn-dl-all").addEventListener("click",()=>{
+  const R=STATE.result;
+  if(!R){return;}
+  // 당첨자 — 전원 포함 (지망제 도입으로 선택지메일 분리 없음)
+  const winRows=R.winners.slice()
+    .sort((a,b)=>sortSlot(a.slot,b.slot)).map((w,i)=>({
+    순번:i+1,리조트:w.slot.resort,지역:w.slot.region,객실타입:w.slot.type,입실일:w.slot.in,
+    사번:w.app.sabun,성명:w.app.name,부서:w.app.dept,
+    당첨지망:w.rank+"지망","원본 우선순위":srcRankText(w.app),차수:w.seq+"박",결과:"당첨"}));
+  // 미충원 (화면 표와 동일한 정렬·사유)
+  const unfilledRows=R.slotResults.filter(r=>r.filled<r.quota)
+    .sort((a,b)=>sortSlot(a.slot,b.slot)).map((r,i)=>{
+      const reason=unfilledReason(r,R);
+      return {순번:i+1,리조트:r.slot.resort,지역:r.slot.region,객실타입:r.slot.type,입실일:r.slot.in,
+              정원:r.quota,당첨:r.filled,미충원:r.quota-r.filled,사유:reason};
+    });
+  // 낙첨
+  const loseRows=R.losers.slice().sort((a,b)=>a.sabun<b.sabun?-1:1)
+    .map((a,i)=>({순번:i+1,사번:a.sabun,성명:a.name,부서:a.dept,결과:"낙첨"}));
+
+  // 검증 — 전체 당첨자의 신청내역 ↔ 배정(당첨) 객실을 나란히 대조 + 자동 점검.
+  // 점검: 입실일 불일치, 타입/지역 유사도<0.5, 또는 당첨 객실이 본인 지망 목록에
+  // 없는 경우 → ⚠확인필요. 의심 행을 맨 위로 정렬.
+  const verifyEmpty={순번:"",사번:"",성명:"",부서:"",당첨지망:"","원본 우선순위":"",차수:"",
+    "[신청] 리조트":"","[신청] 지역":"","[신청] 룸타입":"","[신청] 입실일":"",
+    "[당첨] 리조트":"","[당첨] 지역":"","[당첨] 객실타입":"","[당첨] 입실일":"",
+    "입실일 일치":"","타입 유사도":"","지역 유사도":"","지망 포함":"","점검":""};
+  const verifyRows=R.winners.slice().map(w=>{
+    const ts=dice(normType(w.app.type),w.slot.ntype);
+    const rs=regionScore(regionKey(w.app.region),w.slot.rkey);
+    const dateOk=w.app.in===w.slot.in;
+    const inPref=(STATE.prefs[w.app.sabun]||[]).some(p=>p.gk===STATE.matchMap[w.slot.id]);
+    const susp=(!dateOk||ts<0.5||rs<0.5||!inPref);
+    return {w,ts,rs,dateOk,inPref,susp};
+  }).sort((a,b)=>(b.susp-a.susp)||sortSlot(a.w.slot,b.w.slot))
+    .map((v,i)=>({순번:i+1,사번:v.w.app.sabun,성명:v.w.app.name,부서:v.w.app.dept,
+      당첨지망:v.w.rank+"지망","원본 우선순위":srcRankText(v.w.app),차수:v.w.seq+"박",
+      "[신청] 리조트":v.w.app.resort,"[신청] 지역":v.w.app.region,
+      "[신청] 룸타입":v.w.app.type,"[신청] 입실일":v.w.app.in,
+      "[당첨] 리조트":v.w.slot.resort,"[당첨] 지역":v.w.slot.region,
+      "[당첨] 객실타입":v.w.slot.type,"[당첨] 입실일":v.w.slot.in,
+      "입실일 일치":v.dateOk?"Y":"N","타입 유사도":v.ts.toFixed(2),
+      "지역 유사도":v.rs.toFixed(2),"지망 포함":v.inPref?"Y":"N",
+      "점검":v.susp?"⚠확인필요":"정상"}));
+
+  downloadSheets([
+    {name:"당첨자",rows:winRows,empty:{순번:"",리조트:"",지역:"",객실타입:"",입실일:"",사번:"",성명:"",부서:"",당첨지망:"","원본 우선순위":"",차수:"",결과:""}},
+    {name:"검증",rows:verifyRows,empty:verifyEmpty},
+    {name:"미충원",rows:unfilledRows,empty:{순번:"",리조트:"",지역:"",객실타입:"",입실일:"",정원:"",당첨:"",미충원:"",사유:""}},
+    {name:"낙첨",rows:loseRows,empty:{순번:"",사번:"",성명:"",부서:"",결과:""}},
+  ],VARIANT.file);
+});
+
+document.getElementById("btn-draw").addEventListener("click",draw);
+document.getElementById("btn-redraw").addEventListener("click",draw);
+
+/* ============================================================
+   파일 업로드 배선
+   ============================================================ */
+function readWorkbook(file,cb){
+  const fr=new FileReader();
+  fr.onload=e=>{
+    try{
+      const wb=XLSX.read(new Uint8Array(e.target.result),{type:"array"});
+      cb(wb);
+    }catch(err){alert("엑셀을 읽지 못했습니다: "+err.message);}
+  };
+  fr.readAsArrayBuffer(file);
+}
+function wireDrop(dropId,inputId,onFile){
+  const drop=document.getElementById(dropId),input=document.getElementById(inputId);
+  input.addEventListener("change",e=>{if(e.target.files[0])onFile(e.target.files[0]);});
+  ["dragenter","dragover"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add("over");}));
+  ["dragleave","drop"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove("over");}));
+  drop.addEventListener("drop",e=>{if(e.dataTransfer.files[0])onFile(e.dataTransfer.files[0]);});
+}
+wireDrop("drop1","file1",f=>readWorkbook(f,parseSource));
+wireDrop("drop2","file2",f=>readWorkbook(f,parseTarget));
+
+// 헤더 단계 칩 클릭 → 해당 섹션으로 스크롤
+document.querySelectorAll(".flow .f").forEach(f=>{
+  f.addEventListener("click",()=>{
+    const el=document.getElementById(f.getAttribute("data-target"));
+    if(el) window.scrollTo({top:el.offsetTop-20,behavior:"smooth"});
+  });
+});
+
+// 맨 위로 버튼: 300px 이상 스크롤 시 노출, 클릭 시 최상단 이동
+const toTop=document.getElementById("to-top");
+window.addEventListener("scroll",()=>{toTop.classList.toggle("show",window.scrollY>300);});
+toTop.addEventListener("click",()=>window.scrollTo({top:0,behavior:"smooth"}));
+
+function enableStep(id){document.getElementById(id).classList.remove("disabled");updateStepStates();}
+/* 표현 전용: 각 스텝의 완료/진행중/대기 상태를 .disabled 여부로 계산해 헤더에 반영
+   (추첨·매칭 로직과 무관) */
+function updateStepStates(){
+  const steps=Array.from(document.querySelectorAll(".step"));
+  steps.forEach((s,i)=>{
+    const wait=s.classList.contains("disabled");
+    const next=steps[i+1];
+    const nextEnabled=next && !next.classList.contains("disabled");
+    let state="wait";
+    if(!wait) state = nextEnabled ? "done" : "current";
+    s.classList.toggle("is-wait",state==="wait");
+    s.classList.toggle("is-current",state==="current");
+    s.classList.toggle("is-done",state==="done");
+    const chip=s.querySelector(".st-state");
+    if(chip) chip.textContent={wait:"대기",current:"진행중",done:"완료"}[state];
+  });
+}
+updateStepStates();
+function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+
+/* ============================================================
+   최상단 탭 — 추첨 / 엑셀 중복 검출 전환
+   ============================================================ */
+(function(){
+  document.querySelectorAll("#toptabs .toptab").forEach(tab=>{
+    tab.addEventListener("click",()=>{
+      const view=tab.getAttribute("data-view");
+      document.querySelectorAll("#toptabs .toptab").forEach(t=>t.classList.toggle("active",t===tab));
+      // flow는 #view-lottery 내부에 있으므로 뷰 토글만으로 함께 숨겨짐
+      ["view-lottery","view-dedup"].forEach(v=>
+        document.getElementById(v).classList.toggle("hidden",v!==view));
+      window.scrollTo({top:0,behavior:"smooth"});
+    });
+  });
+})();
+
+/* ============================================================
+   엑셀 중복 검출 — excel_util.html 이식 (XLSX → XLSXStyle, JSZip 그대로)
+   ============================================================ */
+(function(){
+  // === 컬럼명 설정 (실제 엑셀 헤더 텍스트와 정확히 일치시킬 것) ===
+  const COL_EMP_ID = '사번';
+  const COL_NAME   = '이름';
+  const COL_CHILD  = '자식이름';
+  const HEADER_START = 'A1';   // 헤더(컬럼명) 행의 시작 셀
+
+  document.getElementById('dd-colsSummary').textContent =
+    `${COL_EMP_ID} + ${COL_NAME} + ${COL_CHILD}`;
+  const colsList=`${COL_EMP_ID}, ${COL_NAME}, ${COL_CHILD}`;
+  document.getElementById('dd-colsList').textContent = colsList;
+  document.getElementById('dd-colsList2').textContent = colsList;
+  document.getElementById('dd-headerStartLabel').textContent = HEADER_START;
+  document.getElementById('dd-headerStartHint').textContent = HEADER_START;
+
+  const SAMPLE_DATA = [
+    [COL_EMP_ID, COL_NAME, COL_CHILD, '부서', '입사일'],
+    ['E004', '정수진', '정하늘', '개발팀',   '2024-02-01'],
+    ['E001', '김철수', '김민지', '개발팀',   '2023-01-15'],
+    ['E002', '이영희', '박서연', '디자인팀', '2023-03-22'],
+    ['E003', '박민수', '',       '영업팀',   '2022-11-10'],
+    ['E001', '김철수', '김민호', '개발팀',   '2023-01-15'],
+    ['E005', '한지원', '',       '마케팅팀', '2023-07-08'],
+    ['E002', '이영희', '박서연', '디자인팀', '2023-03-22'],
+    ['E004', '정수진', '정한별', '개발팀',   '2024-02-01'],
+    ['E001', '김철수', '김민지', '개발팀',   '2023-01-15'],
+    ['E006', '최동현', '최도윤', '영업팀',   '2024-05-19']
+  ];
+
+  const fileInfo  = document.getElementById('dd-fileInfo');
+  const btnProcess = document.getElementById('dd-btnProcess');
+  const btnSample  = document.getElementById('dd-btnSample');
+  const resultBox  = document.getElementById('dd-result');
+  let loadedFile = null;
+
+  btnSample.addEventListener('click', () => {
+    const { c: headerCol } = XLSXStyle.utils.decode_cell(HEADER_START);
+    const ws = XLSXStyle.utils.aoa_to_sheet(SAMPLE_DATA, { origin: HEADER_START });
+    const baseWidths = [{ wch: 8 }, { wch: 10 }, { wch: 10 }, { wch: 12 }, { wch: 14 }];
+    ws['!cols'] = [...Array(headerCol).fill({ wch: 3 }), ...baseWidths];
+    const wb = XLSXStyle.utils.book_new();
+    XLSXStyle.utils.book_append_sheet(wb, ws, 'Sheet1');
+    XLSXStyle.writeFile(wb, 'sample.xlsx');
+  });
+
+  function onFile(file){
+    loadedFile = file || null;
+    resultBox.innerHTML = '';
+    resultBox.className = '';
+    if (loadedFile) {
+      fileInfo.textContent = `📄 ${loadedFile.name} (${(loadedFile.size / 1024).toFixed(1)} KB)`;
+      btnProcess.disabled = false;
+    } else {
+      fileInfo.textContent = '선택된 파일 없음';
+      btnProcess.disabled = true;
+    }
+  }
+  // drwing .drop 패턴으로 배선 (드래그&드롭 + 클릭)
+  (function wireDdDrop(){
+    const drop=document.getElementById('dd-drop'),input=document.getElementById('dd-fileInput');
+    input.addEventListener('change',e=>{ if(e.target.files[0]) onFile(e.target.files[0]); });
+    ["dragenter","dragover"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add("over");}));
+    ["dragleave","drop"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove("over");}));
+    drop.addEventListener("drop",e=>{ if(e.dataTransfer.files[0]) onFile(e.dataTransfer.files[0]); });
+  })();
+
+  btnProcess.addEventListener('click', () => {
+    if (!loadedFile) return;
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        await processWorkbook(e.target.result, loadedFile.name);
+      } catch (err) {
+        showResult('error', '처리 중 오류: ' + err.message);
+      }
+    };
+    reader.onerror = () => showResult('error', '파일을 읽는 데 실패했습니다.');
+    reader.readAsArrayBuffer(loadedFile);
+  });
+
+  const HEADER_STYLE = {
+    font: { bold: true },
+    fill: { patternType: 'solid', fgColor: { rgb: 'E5E7EB' } },
+    alignment: { horizontal: 'center', vertical: 'center' }
+  };
+  const DUP_STYLE = {
+    fill: { patternType: 'solid', fgColor: { rgb: 'FFFF00' } }
+  };
+
+  async function processWorkbook(arrayBuffer, originalName) {
+    let headerCol, headerRow;
+    try {
+      ({ c: headerCol, r: headerRow } = XLSXStyle.utils.decode_cell(HEADER_START));
+      if (!Number.isInteger(headerCol) || !Number.isInteger(headerRow) || headerCol < 0 || headerRow < 0) {
+        throw new Error();
+      }
+    } catch {
+      showResult('error', `HEADER_START 값이 올바른 셀 주소가 아닙니다: '${HEADER_START}'`);
+      return;
+    }
+
+    const wb = XLSXStyle.read(arrayBuffer, { type: 'array' });
+    const firstSheetName = wb.SheetNames[0];
+    const sheet = wb.Sheets[firstSheetName];
+    const data = XLSXStyle.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+
+    if (data.length <= headerRow) {
+      showResult('error', `헤더가 있어야 할 ${HEADER_START} 위치에 데이터가 없습니다.`);
+      return;
+    }
+
+    const header = (data[headerRow] || []).slice(headerCol).map(h => String(h).trim());
+    const empIdIdx = header.indexOf(COL_EMP_ID);
+    const nameIdx  = header.indexOf(COL_NAME);
+    const childIdx = header.indexOf(COL_CHILD);
+
+    const missing = [];
+    if (empIdIdx === -1) missing.push(COL_EMP_ID);
+    if (nameIdx  === -1) missing.push(COL_NAME);
+    if (childIdx === -1) missing.push(COL_CHILD);
+    if (missing.length > 0) {
+      showResult('error', `다음 컬럼을 찾을 수 없습니다: ${missing.join(', ')}\n현재 헤더(${HEADER_START}부터): ${header.join(', ')}`);
+      return;
+    }
+
+    const bodyRows = [];
+    for (let i = headerRow + 1; i < data.length; i++) {
+      const fullRow = data[i] || [];
+      const row = fullRow.slice(headerCol);
+      if (!row || row.every(c => c === '' || c === null || c === undefined)) continue;
+      bodyRows.push(row);
+    }
+
+    const sortedRows = bodyRows.slice().sort((a, b) =>
+      String(a[empIdIdx] ?? '').localeCompare(String(b[empIdIdx] ?? ''), 'ko') ||
+      String(a[nameIdx]  ?? '').localeCompare(String(b[nameIdx]  ?? ''), 'ko') ||
+      String(a[childIdx] ?? '').localeCompare(String(b[childIdx] ?? ''), 'ko')
+    );
+
+    const keyOf = (row) =>
+      String(row[empIdIdx] ?? '').trim() + '||' +
+      String(row[nameIdx]  ?? '').trim() + '||' +
+      String(row[childIdx] ?? '').trim();
+
+    const groups = new Map();
+    sortedRows.forEach((row, idx) => {
+      const key = keyOf(row);
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(idx);
+    });
+
+    const dupRowSet = new Set();
+    let dupGroupCount = 0;
+    for (const [, rows] of groups) {
+      if (rows.length >= 2) {
+        dupGroupCount++;
+        rows.forEach(r => dupRowSet.add(r));
+      }
+    }
+
+    const seenKeys = new Set();
+    const dedupedRows = [];
+    for (const row of sortedRows) {
+      const key = keyOf(row);
+      if (seenKeys.has(key)) continue;
+      seenKeys.add(key);
+      dedupedRows.push(row);
+    }
+    const removedCount = sortedRows.length - dedupedRows.length;
+
+    const originalSheet = buildSheet([header, ...bodyRows],   null, HEADER_START);
+    const dedupedSheet  = buildSheet([header, ...dedupedRows], null, HEADER_START);
+
+    const newWb = XLSXStyle.utils.book_new();
+    XLSXStyle.utils.book_append_sheet(newWb, originalSheet, '원본');
+    XLSXStyle.utils.book_append_sheet(newWb, dedupedSheet, '중복제거');
+
+    const xlsxBuffer = XLSXStyle.write(newWb, { type: 'array', bookType: 'xlsx' });
+    const finalBlob = await injectTabColor(xlsxBuffer, '중복제거', 'FFFF00');
+
+    const outName = '중복표시_' + originalName.replace(/\.(xlsx|xls)$/i, '') + '.xlsx';
+    triggerDownload(finalBlob, outName);
+
+    showResult('success',
+      `완료되었습니다.\n` +
+      `· 헤더 시작: ${HEADER_START}\n` +
+      `· 전체 행: ${bodyRows.length}건\n` +
+      `· 중복 그룹: ${dupGroupCount}개 (${COL_EMP_ID}+${COL_NAME}+${COL_CHILD} 동일)\n` +
+      `· 중복 행: ${dupRowSet.size}건\n` +
+      `· 제거된 행: ${removedCount}건\n` +
+      `· 시트: '원본' / '중복제거'(${dedupedRows.length}행, 탭 노란색)\n` +
+      `· 저장 파일: ${outName}`
+    );
+  }
+
+  async function injectTabColor(xlsxArrayBuffer, targetSheetName, rgb) {
+    const zip = await JSZip.loadAsync(xlsxArrayBuffer);
+
+    const workbookXml = await zip.file('xl/workbook.xml').async('string');
+    const sheetMatch = new RegExp(
+      `<sheet[^>]*name="${escapeForRegex(targetSheetName)}"[^>]*r:id="(rId\\d+)"`
+    ).exec(workbookXml);
+    if (!sheetMatch) throw new Error(`workbook.xml에서 시트 '${targetSheetName}'를 찾지 못함`);
+    const rId = sheetMatch[1];
+
+    const relsXml = await zip.file('xl/_rels/workbook.xml.rels').async('string');
+    const relMatch = new RegExp(
+      `<Relationship[^>]*Id="${rId}"[^>]*Target="([^"]+)"`
+    ).exec(relsXml);
+    if (!relMatch) throw new Error(`workbook.xml.rels에서 ${rId}의 Target을 찾지 못함`);
+
+    const target = relMatch[1].replace(/^\/?xl\//, '');
+    const sheetPath = 'xl/' + target;
+    const sheetXmlFile = zip.file(sheetPath);
+    if (!sheetXmlFile) throw new Error(`${sheetPath} 파일을 찾지 못함`);
+
+    let sheetXml = await sheetXmlFile.async('string');
+    const tabColorTag = `<tabColor rgb="${rgb}"/>`;
+
+    if (/<sheetPr\b[^>]*\/>/.test(sheetXml)) {
+      sheetXml = sheetXml.replace(/<sheetPr\b([^>]*)\/>/, `<sheetPr$1>${tabColorTag}</sheetPr>`);
+    } else if (/<sheetPr\b[^>]*>/.test(sheetXml)) {
+      if (/<tabColor\b[^/]*\/>/.test(sheetXml)) {
+        sheetXml = sheetXml.replace(/<tabColor\b[^/]*\/>/, tabColorTag);
+      } else {
+        sheetXml = sheetXml.replace(/(<sheetPr\b[^>]*>)/, `$1${tabColorTag}`);
+      }
+    } else {
+      sheetXml = sheetXml.replace(/(<worksheet\b[^>]*>)/, `$1<sheetPr>${tabColorTag}</sheetPr>`);
+    }
+
+    zip.file(sheetPath, sheetXml);
+    return zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  }
+
+  function escapeForRegex(str) {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  function triggerDownload(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function buildSheet(rows, dupBodyIndexSet, origin) {
+    const ws = origin
+      ? XLSXStyle.utils.aoa_to_sheet(rows, { origin })
+      : XLSXStyle.utils.aoa_to_sheet(rows);
+    const range = XLSXStyle.utils.decode_range(ws['!ref']);
+    const headerR = range.s.r;
+    const startC  = range.s.c;
+
+    for (let C = startC; C <= range.e.c; C++) {
+      const addr = XLSXStyle.utils.encode_cell({ r: headerR, c: C });
+      if (ws[addr]) ws[addr].s = HEADER_STYLE;
+    }
+
+    if (dupBodyIndexSet && dupBodyIndexSet.size > 0) {
+      for (const bodyIdx of dupBodyIndexSet) {
+        const r = headerR + 1 + bodyIdx;
+        for (let C = startC; C <= range.e.c; C++) {
+          const addr = XLSXStyle.utils.encode_cell({ r, c: C });
+          if (!ws[addr]) ws[addr] = { t: 's', v: '' };
+          ws[addr].s = DUP_STYLE;
+        }
+      }
+    }
+
+    const colWidths = Array(startC).fill({ wch: 3 });
+    for (let C = startC; C <= range.e.c; C++) {
+      let max = 8;
+      for (let R = headerR; R <= range.e.r; R++) {
+        const addr = XLSXStyle.utils.encode_cell({ r: R, c: C });
+        const v = ws[addr] ? String(ws[addr].v ?? '') : '';
+        const len = [...v].reduce((s, ch) => s + (ch.charCodeAt(0) > 127 ? 2 : 1), 0);
+        if (len > max) max = len;
+      }
+      colWidths.push({ wch: Math.min(max + 2, 40) });
+    }
+    ws['!cols'] = colWidths;
+    return ws;
+  }
+
+  function showResult(type, msg) {
+    resultBox.className = 'dd-result ' + type;
+    resultBox.textContent = msg;
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+# 실제 신청자·당첨자 개인정보(사번·성명·부서)가 들어 있어 저장소에 올리지 않는다
+*.xlsx
+
+# Windows 다운로드 부산물 / 브라우저 자동화 캐시
+*Zone.Identifier
+.playwright-mcp/
