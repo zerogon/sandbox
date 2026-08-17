@@ -145,6 +145,12 @@
   .card .k{color:var(--muted);font-size:12px;}
   .card .v{font-size:22px;font-weight:700;}
   .v.ok{color:var(--ok);} .v.warn{color:var(--warn);} .v.bad{color:var(--bad);}
+  .card.rank{padding:0;min-width:150px;}
+  .card.rank .rline{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:10px 16px;}
+  .card.rank .rline+.rline{border-top:1px solid var(--line);}
+  .card.rank .k::after{content:" :";}
+  .card.rank .v{font-size:15px;font-weight:400;color:var(--text);}
+  .summary .brk{flex-basis:100%;height:0;margin:0;padding:0;border:none;background:none;min-width:0;}
   .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;}
   .tab{padding:8px 15px;border-radius:9px 9px 0 0;background:var(--panel2);cursor:pointer;font-size:13px;
        border:1px solid var(--line);border-bottom:none;color:var(--muted);transition:.15s;}
@@ -177,6 +183,14 @@
   #rec-toggle{cursor:pointer;user-select:none;transition:filter .2s;}
   #rec-toggle.on{filter:drop-shadow(0 0 5px #dc2626);}
   td.mosaic{filter:blur(6px);user-select:none;pointer-events:none;}
+  /* 녹화모드: 설명·안내 문구만 숨김. 상태/경고/카운트/결과표는 유지.
+     설명과 상태가 섞여 있는 .note는 설명 쪽에만 .desc를 붙여 구분한다. */
+  body.rec-on .step-hd .sub,
+  body.rec-on .drop .hint,
+  body.rec-on .legend,
+  body.rec-on .rule-box,
+  body.rec-on .dd-desc,
+  body.rec-on .note.desc{display:none;}
 </style>
 </head>
 <body>
@@ -283,7 +297,7 @@
       <div class="row">
         <button id="btn-draw">🎲 추첨 실행</button>
         <button class="ghost hidden" id="btn-redraw" disabled>↻ 다시 추첨</button>
-        <span class="note hidden" id="redraw-note">버튼을 누를 때마다 새로 무작위 추첨합니다(매 실행 결과 상이).</span>
+        <span class="note desc hidden" id="redraw-note">버튼을 누를 때마다 새로 무작위 추첨합니다(매 실행 결과 상이).</span>
       </div>
     </div>
   </section>
@@ -323,7 +337,7 @@
     <div class="step-bd">
       <div class="row">
         <button class="ghost" id="dd-btnSample">⬇ 샘플 엑셀 다운로드</button>
-        <span class="note">다자녀(중복 아님)와 진짜 중복이 섞인 시나리오.</span>
+        <span class="note desc">다자녀(중복 아님)와 진짜 중복이 섞인 시나리오.</span>
       </div>
     </div>
   </section>
@@ -446,12 +460,15 @@ document.getElementById("rec-toggle").addEventListener("click",()=>{
     if(confirm("녹화모드를 켜시겠습니까?")){
       STATE.recordMode=true;
       document.getElementById("rec-toggle").classList.add("on");
+      // 설명 문구 숨김은 CSS(body.rec-on)가 담당 — 추첨 전에도 즉시 적용된다.
+      document.body.classList.toggle("rec-on",true);
       if(STATE.result) renderResult();
     }
   }else{
     if(confirm("녹화모드를 끄시겠습니까?")){
       STATE.recordMode=false;
       document.getElementById("rec-toggle").classList.remove("on");
+      document.body.classList.toggle("rec-on",false);
       if(STATE.result) renderResult();
     }
   }
@@ -979,6 +996,13 @@ function renderMatch(focusSlotId){
   }
 }
 function card(k,v,cls){return `<div class="card"><div class="k">${k}</div><div class="v ${cls||""}">${v}</div></div>`;}
+// 지망 카드: 위 칸 = N지망 당첨, 아래 칸 = 2박 N지망 (2박 0명이어도 항상 표시)
+function rankCard(r,v1,v2){
+  return `<div class="card rank">`
+    +`<div class="rline"><span class="k">${r}지망 당첨</span><span class="v">${v1}</span></div>`
+    +`<div class="rline"><span class="k">2박 ${r}지망</span><span class="v">${v2}</span></div>`
+  +`</div>`;
+}
 
 ["match-filter","only-issue","only-dup","all-groups"].forEach(id=>{
   const el=document.getElementById(id);
@@ -1231,15 +1255,12 @@ function renderResult(){
       card("총 정원",totalQuota,"")
      +card("당첨 건수",filled,"ok")
      +card("당첨 인원",R.winnerCount,"ok")
-     +card("2박 인원",R.dualCount,R.dualCount?"ok":"")
      +card("미충원 자리",unfilled,unfilled?"warn":"")
      +card("낙첨 인원",R.losers.length,"")
-     // 당첨 0명인 지망도 빠뜨리지 않고 1..maxRank 전부 표시
+     +`<div class="brk"></div>`   // 지망 카드는 항상 다음 줄부터 시작
+     // 당첨 0명인 지망도 빠뜨리지 않고 1..maxRank 전부 표시 (1박/2박 2단)
      +Array.from({length:STATE.maxRank},(_,i)=>i+1).map(r=>
-        card(r+"지망 당첨",R.rankStats[r]||0,r===1?"ok":"")).join("")
-     +(R.dualCount?Array.from({length:STATE.maxRank},(_,i)=>i+1).map(r=>
-        card("2박 "+r+"지망",R.rankStats2[r]||0,"")).join(""):"")
-     +card("지망 기준",{wide:"가로형",column:"지망 컬럼",roworder:"행순서"}[STATE.prefMode]||"-","");
+        rankCard(r,R.rankStats[r]||0,R.rankStats2[r]||0)).join("");
 
   // 탭
   const tabs=[["win","🏆 당첨자 ("+filled+"건 / "+R.winnerCount+"명)"],["unfilled","⚠ 미충원 ("+unfilled+")"],
@@ -1303,8 +1324,13 @@ document.getElementById("btn-dl-all").addEventListener("click",()=>{
   const R=STATE.result;
   if(!R){return;}
   // 당첨자 — 전원 포함 (지망제 도입으로 선택지메일 분리 없음)
+  // 명단 확인용 파일이므로 성명 가나다순. 동명이인은 사번, 한 사람이 2건(2박) 당첨된
+  // 경우는 sortSlot으로 갈라 두 행이 붙어 나오게 한다. 화면 탭은 리조트순 그대로.
   const winRows=R.winners.slice()
-    .sort((a,b)=>sortSlot(a.slot,b.slot)).map((w,i)=>({
+    .sort((a,b)=>
+      String(a.app.name||"").localeCompare(String(b.app.name||""),"ko")
+      || String(a.app.sabun||"").localeCompare(String(b.app.sabun||""),"ko")
+      || sortSlot(a.slot,b.slot)).map((w,i)=>({
     순번:i+1,리조트:w.slot.resort,지역:w.slot.region,객실타입:w.slot.type,입실일:w.slot.in,
     사번:w.app.sabun,성명:w.app.name,부서:w.app.dept,
     당첨지망:w.rank+"지망","원본 우선순위":srcRankText(w.app),차수:w.seq+"박",결과:"당첨"}));
