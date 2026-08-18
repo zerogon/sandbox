@@ -91,6 +91,24 @@
   .chip.total{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600;}
   .chip.total b{color:#fff;}
   .chip.warn-chip{background:transparent;border-color:var(--warn);color:var(--warn);font-weight:600;}
+  /* 미연결 신청그룹 chip — 누르면 그 그룹을 붙일 객실만 골라 보여준다 */
+  .chip.pick{cursor:pointer;transition:.15s;}
+  .chip.pick:hover{background:var(--warn);color:#fff;}
+  /* 주황 테두리 = 미연결 경고 / 파랑 채움 = 지금 고르는 중. 색으로 의미를 가른다. */
+  .chip.pick.on{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .chip.pick.on b{color:#fff;}
+  /* 고르기 모드 배너 — 경고가 아니라 '지금 무엇을 붙이는 중'인 상태 표시라
+     경고색을 쓰지 않는다. 한 줄로 끝나게 문구를 줄였다. */
+  #match-focus{margin-top:12px;padding:8px 13px;border:1px solid var(--line);border-radius:10px;
+      background:var(--panel2);font-size:12.5px;color:var(--text);display:flex;gap:10px;
+      align-items:center;flex-wrap:wrap;}
+  /* .hidden(클래스)만으로는 위 ID 규칙의 display:flex를 못 이긴다 — 명시도 때문에
+     고르기를 끝내도 배너가 계속 남아 있었다. 같은 명시도로 다시 눌러 끈다. */
+  #match-focus.hidden{display:none;}
+  #match-focus .who{font-weight:700;}
+  #match-focus .hint{color:var(--muted);}
+  #match-focus button{padding:4px 12px;font-size:12px;margin-left:auto;}
+  td .dupwith{display:block;font-size:11px;color:var(--bad);margin-top:3px;font-weight:600;}
   .warn-box{border:1px solid var(--bad);background:#fef2f2;color:var(--bad);border-radius:8px;
             padding:10px 14px;font-size:13px;margin-bottom:14px;line-height:1.75;}
   .rule-box{border:1px solid var(--line);background:var(--panel2);border-radius:8px;
@@ -104,15 +122,28 @@
   #step3 .scroll{max-height:600px;} /* 2줄 대비 셀로 행이 높아진 만큼 */
   /* 좁은 컬럼은 폭을 고정해 헤더가 "순/번", "리조/트" 처럼 쪼개지지 않게 하고,
      비교 대상인 지역·타입에 폭을 몰아준다. */
-  #match-table th:nth-child(1),#match-table td:nth-child(1){width:44px;white-space:nowrap;}
-  #match-table th:nth-child(2),#match-table td:nth-child(2){width:122px;white-space:nowrap;}
-  #match-table th:nth-child(3),#match-table td:nth-child(3){width:72px;white-space:nowrap;}
-  #match-table th:nth-child(4),#match-table td:nth-child(4),
-  #match-table th:nth-child(5),#match-table td:nth-child(5){min-width:210px;}
-  #match-table th:nth-child(6),#match-table td:nth-child(6){width:68px;white-space:nowrap;}
-  #match-table th:nth-child(7),#match-table td:nth-child(7){width:108px;white-space:nowrap;}
-  #match-table th:nth-child(8),#match-table td:nth-child(8){width:28%;}
+  /* 아래 폭 규칙은 8열인 검수표 전용 — 6열짜리 고르기 모드 표(.focus)는 제외한다. */
+  #match-table:not(.focus) th:nth-child(1),#match-table:not(.focus) td:nth-child(1){width:44px;white-space:nowrap;}
+  #match-table:not(.focus) th:nth-child(2),#match-table:not(.focus) td:nth-child(2){width:122px;white-space:nowrap;}
+  #match-table:not(.focus) th:nth-child(3),#match-table:not(.focus) td:nth-child(3){width:72px;white-space:nowrap;}
+  #match-table:not(.focus) th:nth-child(4),#match-table:not(.focus) td:nth-child(4),
+  #match-table:not(.focus) th:nth-child(5),#match-table:not(.focus) td:nth-child(5){min-width:210px;}
+  #match-table:not(.focus) th:nth-child(6),#match-table:not(.focus) td:nth-child(6){width:68px;white-space:nowrap;}
+  #match-table:not(.focus) th:nth-child(7),#match-table:not(.focus) td:nth-child(7){width:108px;white-space:nowrap;}
+  #match-table:not(.focus) th:nth-child(8),#match-table:not(.focus) td:nth-child(8){width:28%;}
   #match-table select{width:100%;max-width:none;}
+  /* ===== 고르기 모드 후보 객실 표 (6열) ===== */
+  #match-table.focus th:nth-child(1),#match-table.focus td:nth-child(1){width:64px;white-space:nowrap;}
+  #match-table.focus th:nth-child(2),#match-table.focus td:nth-child(2){width:180px;}
+  #match-table.focus th:nth-child(3),#match-table.focus td:nth-child(3){min-width:230px;}
+  #match-table.focus th:nth-child(4),#match-table.focus td:nth-child(4){width:96px;white-space:nowrap;}
+  #match-table.focus th:nth-child(5),#match-table.focus td:nth-child(5){width:23%;}
+  #match-table.focus th:nth-child(6),#match-table.focus td:nth-child(6){width:88px;white-space:nowrap;}
+  #match-table.focus td .pct{font-weight:700;font-size:14px;}
+  /* 낮은 유사도는 '경고'가 아니라 그냥 낮은 것 — ≠ 표기가 이미 빨강이라
+     여기까지 주황을 쓰면 후보 목록 전체가 경고색이 된다. */
+  #match-table.focus td .pct.low{color:var(--muted);}
+  #match-table.focus button{padding:5px 13px;font-size:12px;}
   .badge{font-size:11px;padding:2px 8px;border-radius:12px;font-weight:700;white-space:nowrap;}
   .b-auto{background:#dcfce7;color:#15803d;}
   .b-manual{background:#dbeafe;color:#1d4ed8;}
@@ -278,7 +309,9 @@
         <label class="mini"><input type="checkbox" id="only-dup" /> 중복 연결만 보기</label>
         <label class="mini"><input type="checkbox" id="all-groups" /> 전체 신청그룹 보기(리조트·날짜 제한 해제)</label>
       </div>
+      <div id="match-focus" class="hidden"></div>
       <div class="scroll"><table id="match-table"></table></div>
+      <div id="match-orphans" class="hidden" style="margin-top:12px;"></div>
       <div class="row" style="margin-top:14px;">
         <button id="btn-confirm">✅ 매칭 확정</button>
         <span class="note" id="match-note"></span>
@@ -371,6 +404,9 @@
    ============================================================ */
 
 const MAX_PREF = 5; // 개인이 낼 수 있는 지망 최대 개수. 초과분은 제외 후 경고.
+// 객실 타입을 '같은 객실로 볼 수 있는' 최소 유사도. 자동 매칭 2차 게이트,
+// 미매칭 판정, 표시(≈/≠), STEP5 검증 시트가 모두 이 값을 공유한다.
+const TYPE_MIN = 0.5;
 
 /* ---------- 정규화 헬퍼 ---------- */
 function canonResort(raw){
@@ -397,6 +433,10 @@ function normType(raw){
   s = s.replace(/[\s\-\/()_]/g,"");
   s = s.replace(/평형|평\(|평$|평(?=[^가-힣])/g,"평");
   s = s.replace(/취사불가|미취사|취사/g,"");
+  // '침대'는 객실 LIST에만 붙는 표기(신청서엔 없음) — 남겨두면 정상쌍조차
+  // 1차 정확일치를 못 넘겨 2차 유사도 매칭으로 흘러간다.
+  // '클린'은 지우지 않는다: 취사↔클린은 실제로 다른 객실이라 병합하면 안 된다.
+  s = s.replace(/침대/g,"");
   s = s.replace(/[^0-9a-z가-힣]/g,"");
   // 평형 leading-zero 제거: 025평->25평
   s = s.replace(/0*(\d+)평/g,"$1평");
@@ -443,6 +483,7 @@ const STATE = {
   apps: [],         // {sabun, name, dept, resort, region, type, in, key}
   groups: {},       // groupKey -> {resort,region,type,in, sabuns:Set, apps:[]}
   matchMap: {},      // slotId -> groupKey | null
+  focusGroup: null,  // '연결 대상 고르기' 모드: 이 신청그룹을 붙일 후보 객실만 표시
   matchStatus: {},   // slotId -> "auto" | "sug" | "none"
   prefs: {},         // 사번 -> [{gk, rank, ord, app}] (유효지망 1..MAX_PREF 정규화)
   prefMode: null,    // "wide"(1~N지망 컬럼) | "column"(우선순위/지망/순위 컬럼) | "roworder"(행 순서)
@@ -819,6 +860,7 @@ function autoMatch(){
   const used=new Set();
   STATE.matchMap={};
   STATE.matchStatus={};
+  STATE.focusGroup=null;   // 새로 파싱하면 고르기 모드는 해제
   // 같은 (리조트,타입,입실일) 묶음으로 후보 인덱싱 — 지역 명칭 차이를 1차 키에서 배제
   const byRT={};
   groups.forEach(g=>{const k=g.resort+"§"+g.ntype+"§"+g.in;(byRT[k]=byRT[k]||[]).push(g);});
@@ -842,8 +884,13 @@ function autoMatch(){
     if(STATE.matchMap[s.id]) return;
     groups.forEach(g=>{
       if(g.resort!==s.resort||g.in!==s.in) return;
-      const sc=dice(s.ntype,g.ntype)*0.7+regionScore(s.rkey,g.rkey)*0.3;
-      if(sc>=0.4) pairs.push({sid:s.id,gk:g.key,sc});
+      // 타입 유사도에 독립 하한을 둔다. 종합점수만 보면 지역이 같을 때
+      // regionScore=1.0이 0.3을 채워버려, 타입 유사도가 0.143만 넘어도 통과했다
+      // (예: 거제 '패밀리오션뷰 클린' 객실 ↔ '스위트 오션뷰 취사' 신청, 타입 0.29).
+      // 0.5는 cmpCell·STEP5 검증 시트의 ⚠확인필요 기준과 같은 값이다.
+      const ts=dice(s.ntype,g.ntype), rs=regionScore(s.rkey,g.rkey);
+      const sc=ts*0.7+rs*0.3;
+      if(ts>=TYPE_MIN && sc>=0.4) pairs.push({sid:s.id,gk:g.key,sc});
     });
     STATE.matchMap[s.id]=null;STATE.matchStatus[s.id]="none";
   });
@@ -862,7 +909,10 @@ function groupOptionsFor(slot, currentKey, showAll){
   const usedByOther=new Set(Object.entries(STATE.matchMap)
         .filter(([sid,gk])=>gk && sid!==slot.id).map(([,gk])=>gk));
   const opts=Object.values(STATE.groups)
-    .filter(g=>showAll || (g.resort===slot.resort && (g.in===slot.in || g.key===currentKey)))
+    // 현재 선택된 그룹은 리조트·날짜와 무관하게 항상 남긴다. 리조트 조건에까지 예외를
+    // 걸지 않으면, 전체보기로 다른 리조트 그룹을 수동 지정한 뒤 체크를 풀었을 때 그
+    // 그룹이 옵션에서 사라져 드롭다운만 '미배정'으로 표시되는 불일치가 생긴다.
+    .filter(g=>g.key===currentKey || showAll || (g.resort===slot.resort && g.in===slot.in))
     .map(g=>{
       const sc=dice(slot.ntype,g.ntype)*0.7+regionScore(slot.rkey,g.rkey)*0.3;
       return {g,sc,taken:usedByOther.has(g.key)};
@@ -878,11 +928,13 @@ function deriveMatchStatus(s, usedGroups){
   const gk=STATE.matchMap[s.id];
   const g=gk?STATE.groups[gk]:null;
   if(gk) return (g&&g.sabuns.size===0) ? "empty" : (STATE.matchStatus[s.id]||"auto");
-  // 같은 (리조트,입실일)에 아직 안 쓰인 신청그룹이 있으면 검수 대상(미매칭),
-  // 하나도 없으면 그 날짜에 신청자 자체가 없는 빈 객실(신청없음)
-  const hasSameDate=Object.values(STATE.groups).some(
-    gg=>gg.resort===s.resort && gg.in===s.in && !usedGroups.has(gg.key));
-  return hasSameDate ? "none" : "empty";
+  // 같은 (리조트,입실일)에 아직 안 쓰인 신청그룹이 '이 객실 타입과 닮은' 경우에만
+  // 검수 대상(미매칭)으로 본다. 타입 조건이 없으면 대응 객실 없는 신청 하나가
+  // 같은 날짜의 무관한 빈 객실 전부를 미매칭으로 물들여 검수 목록을 덮어버린다.
+  const hasCand=Object.values(STATE.groups).some(
+    gg=>gg.resort===s.resort && gg.in===s.in && !usedGroups.has(gg.key)
+        && dice(s.ntype,gg.ntype)>=TYPE_MIN);
+  return hasCand ? "none" : "empty";
 }
 
 /* 객실(source) 필드 ↔ 신청그룹(target) 필드 2줄 대비 셀.
@@ -917,24 +969,80 @@ function renderMatch(focusSlotId){
   const t=document.getElementById("match-table");
   const scroller=t.closest(".scroll");
   const keepTop=scroller?scroller.scrollTop:0; // 재렌더로 스크롤이 튀지 않게 보존
-  let html="<thead><tr><th>순번</th><th>상태</th><th>리조트</th><th>지역</th><th>타입(객실)</th><th>입실일</th>"
-          +"<th>정원 ↔ 신청</th><th>연결된 신청그룹 (변경)</th></tr></thead><tbody>";
-  let cAuto=0,cManual=0,cSug=0,cNone=0,cEmpty=0;
+  let html="";      // 헤더는 모드(검수표 8열 / 고르기 6열)가 정해진 뒤에 붙인다
   let rowNo=0;
   // 어떤 슬롯에든 이미 배정된 신청그룹 + 그룹별로 몇 개 슬롯이 쓰는지(중복 판정용)
   const usedGroups=new Set(Object.values(STATE.matchMap).filter(Boolean));
   const gkSlots={};
   Object.entries(STATE.matchMap).forEach(([sid,gk])=>{if(gk)(gkSlots[gk]=gkSlots[gk]||[]).push(sid);});
-  const slots=STATE.slots.slice().sort(sortSlot);
-  slots.forEach(s=>{
+  // 통계는 필터·모드와 무관하게 전체 슬롯 기준 — 표시 목록과 분리해 먼저 센다
+  let cAuto=0,cManual=0,cSug=0,cNone=0,cEmpty=0;
+  STATE.slots.forEach(s=>{
+    const st=deriveMatchStatus(s,usedGroups);
+    if(st==="auto")cAuto++;else if(st==="manual")cManual++;else if(st==="sug")cSug++;
+    else if(st==="empty")cEmpty++;else cNone++;
+  });
+  /* 표시 목록.
+     '연결 대상 고르기' 모드(focusGroup)에서는 그 신청그룹을 드롭다운에 담을 수 있는
+     객실만 유사도 높은 순으로 보여주고 나머지 필터는 모두 무시한다. 붙일 객실이
+     대개 '자동'·'신청없음'이라 기본 필터에 가려, 미연결 그룹을 연결할 방법이
+     없던 문제를 푸는 경로다. */
+  const focusGk=(STATE.focusGroup&&STATE.groups[STATE.focusGroup])?STATE.focusGroup:null;
+  const focusG=focusGk?STATE.groups[focusGk]:null;
+  let view;
+  const focusScore={};   // 고르기 모드 표에서 유사도 열을 그리는 데 쓴다
+  if(focusGk){
+    view=STATE.slots.map(s=>{
+      const o=groupOptionsFor(s,STATE.matchMap[s.id],showAll).find(x=>x.g.key===focusGk);
+      if(o) focusScore[s.id]=o.sc;
+      return o?{s,sc:o.sc}:null;
+    }).filter(Boolean).sort((a,b)=>b.sc-a.sc).map(x=>x.s);
+  }else{
+    view=STATE.slots.slice().sort(sortSlot);
+  }
+
+  if(focusGk){
+    /* ===== 고르기 모드 =====
+       "이 신청을 어느 객실에 붙일까"만 답하면 되는 화면이라 검수용 정보(순번·상태
+       배지·중복표기·경쟁태그)를 전부 걷어내고, 드롭다운 대신 행마다 [연결] 버튼을
+       둔다. 긴 옵션 라벨에서 대상 그룹을 다시 찾아야 하던 단계가 사라진다. */
+    html="<thead><tr><th>유사도</th><th>리조트 · 지역</th><th>타입(객실)</th><th>입실일</th>"
+        +"<th>정원 / 현재 연결</th><th></th></tr></thead><tbody>";
+    view.forEach(s=>{
+      const cur=STATE.matchMap[s.id];
+      const curG=cur?STATE.groups[cur]:null;
+      const sc=focusScore[s.id]||0;
+      const loc=s.resort+" · "+s.region, gloc=focusG.resort+" · "+focusG.region;
+      const dateCell = s.in===focusG.in
+        ? `<div class="cmp"><span class="src">${esc(s.in)}</span></div>`
+        : `<div class="cmp"><span class="src">${esc(s.in)}</span>`
+          +`<span class="tgt diff">≠ 신청 ${esc(focusG.in)}</span></div>`;
+      // 이미 다른 그룹이 붙어 있으면 연결이 곧 '덮어쓰기'라는 걸 빨간 글씨로 알린다.
+      // 지역은 왼쪽 열에 이미 있으니 타입만 적어 행 높이를 낮췄다.
+      const curCell = `<div class="cmp"><span class="src">정원 ${s.quota}명</span>`
+        +(curG
+          ? `<span class="dupwith">덮어씀 — 현재 ${esc(curG.type)} (${curG.sabuns.size}명)</span>`
+          : `<span class="tgt void">비어 있음</span>`)
+        +`</div>`;
+      rowNo++;
+      // 아랫줄 대비는 값이 다를 때만(always=false) — 같은 줄에 '= 동일'을 붙이면
+      // 유사도 열과 같은 말을 반복하며 후보 목록만 빽빽해진다.
+      html+=`<tr><td><span class="pct${sc>=0.5?"":" low"}">${Math.round(sc*100)}%</span></td>`
+          +`<td>${cmpCell(loc,focusG,gloc,s.resort+s.rkey,focusG.resort+focusG.rkey,regionScore(s.rkey,focusG.rkey),false)}</td>`
+          +`<td>${cmpCell(s.type,focusG,focusG.type,s.ntype,focusG.ntype,dice(s.ntype,focusG.ntype),false)}</td>`
+          +`<td>${dateCell}</td><td>${curCell}</td>`
+          +`<td><button class="ghost" data-pick="${esc(s.id)}">연결</button></td></tr>`;
+    });
+  }else{
+
+  html="<thead><tr><th>순번</th><th>상태</th><th>리조트</th><th>지역</th><th>타입(객실)</th><th>입실일</th>"
+      +"<th>정원 ↔ 신청</th><th>연결된 신청그룹 (변경)</th></tr></thead><tbody>";
+  view.forEach(s=>{
     const gk=STATE.matchMap[s.id];
     const g=gk?STATE.groups[gk]:null;
     const nApp=g?g.sabuns.size:0;
     const st=deriveMatchStatus(s,usedGroups);
     const isDup=!!(gk&&gkSlots[gk]&&gkSlots[gk].length>1);
-    // 통계 (필터와 무관하게 전체 슬롯 기준)
-    if(st==="auto")cAuto++;else if(st==="manual")cManual++;else if(st==="sug")cSug++;
-    else if(st==="empty")cEmpty++;else cNone++;
     // 필터 — 신청그룹 텍스트도 검색 대상에 포함
     const hay=norm(s.resort+s.region+s.type+s.in+(g?g.region+g.type:""));
     if(filter && !hay.includes(filter)) return;
@@ -947,15 +1055,46 @@ function renderMatch(focusSlotId){
                  none:'<span class="badge b-none">미매칭</span>',
                  empty:'<span class="badge b-empty">신청없음</span>'}[st]
                 +(isDup?'<span class="badge b-dup">⚠중복</span>':"");
-    // 드롭다운 — 라벨에 유사도·입실일·신청자수까지 넣어 선택 근거를 드러낸다
+    // 중복 상대는 대개 '자동'이라 기본 필터에 가려 보이지 않는다 — 어느 객실과
+    // 겹쳤는지 배지 옆에 직접 적어준다.
+    const dupNote=isDup
+      ? '<span class="dupwith">'+gkSlots[gk].filter(x=>x!==s.id).map(x=>{
+          const o=STATE.slots.find(y=>y.id===x);
+          return o?esc(o.region+" · "+o.type+" · "+o.in):"";
+        }).join(" / ")+' 와(과) 같은 신청그룹</span>'
+      : "";
+    /* 드롭다운 — 라벨에는 '이 객실과 다른 값'만 덧붙인다. 기본 상태에서는 후보가
+       같은 리조트·입실일로 이미 걸러져 있어(groupOptionsFor) 리조트·날짜를 매 옵션에
+       붙이면 전부 같은 글자가 반복될 뿐이다. ⚠사유는 optgroup 이름으로 올려
+       한 줄에 몰려 있던 정보를 갈래로 나눴다. */
     const opts=groupOptionsFor(s,gk,showAll);
-    let sel=`<select data-slot="${esc(s.id)}"><option value="">— 신청없음(미배정) —</option>`;
+    const optLabel=o=>{
+      // U+2007(숫자폭 공백)으로 자릿수를 맞춰 %가 세로로 정렬되게 한다.
+      // 일반 공백은 option 텍스트에서 브라우저가 접어버린다.
+      let L=String(Math.round(o.sc*100)).padStart(3," ")+"% · "
+           +(o.g.resort!==s.resort?"["+o.g.resort+"] ":"")
+           +o.g.type+" ("+o.g.sabuns.size+"명)";
+      if(o.g.region!==s.region) L+=" · "+o.g.region;
+      if(o.g.in!==s.in)         L+=" · "+o.g.in;
+      return L;
+    };
+    const buckets=[{label:"연결 가능",items:[]},
+                   {label:"⚠ 이미 다른 객실에 연결됨",items:[]},
+                   {label:"⚠ 리조트·입실일이 다름",items:[]}];
     opts.forEach(o=>{
-      const label=(showAll?`[${o.g.resort}] `:"")
-        +`${Math.round(o.sc*100)}% · ${o.g.type} · ${o.g.region} · ${o.g.in} · ${o.g.sabuns.size}명`
-        +(o.taken&&o.g.key!==gk?" ⚠다른 객실에 연결됨":"")
-        +(o.g.in!==s.in?" ⚠날짜 "+o.g.in:"");
-      sel+=`<option value="${esc(o.g.key)}" ${o.g.key===gk?"selected":""}>${esc(label)}</option>`;
+      const off=(o.g.resort!==s.resort||o.g.in!==s.in);
+      buckets[(o.taken&&o.g.key!==gk)?1:(off?2:0)].items.push(o);
+    });
+    let sel=`<select data-slot="${esc(s.id)}"><option value="">— 신청없음(미배정) —</option>`;
+    buckets.forEach(b=>{
+      if(!b.items.length) return;
+      // 전체보기에서 후보가 수백 건이 될 수 있다 — 잘라내는 대신 건수를 적어둔다
+      const lb=b.label+(b.items.length>8?` (${b.items.length}건)`:"");
+      sel+=`<optgroup label="${esc(lb)}">`;
+      b.items.forEach(o=>{
+        sel+=`<option value="${esc(o.g.key)}" ${o.g.key===gk?"selected":""}>${esc(optLabel(o))}</option>`;
+      });
+      sel+="</optgroup>";
     });
     sel+="</select>";
     // 정원 ↔ 신청자수 — 경쟁/미달이 검수 단계에서 바로 보이도록
@@ -965,7 +1104,7 @@ function renderMatch(focusSlotId){
       : nApp===s.quota? '<span class="tag fit">딱맞음</span>'
       :                 '<span class="tag low">미달 '+(s.quota-nApp)+'</span>';
     rowNo++;
-    html+=`<tr${isDup?' class="dup-row"':""}><td>${rowNo}</td><td>${badge}</td>`
+    html+=`<tr${isDup?' class="dup-row"':""}><td>${rowNo}</td><td>${badge}${dupNote}</td>`
         +`<td>${cmpCell(s.resort,g,g&&g.resort,s.resort,g&&g.resort,g&&g.resort===s.resort?1:0,false)}</td>`
         +`<td>${cmpCell(s.region,g,g&&g.region,s.rkey,g&&g.rkey,g?regionScore(s.rkey,g.rkey):0,true)}</td>`
         +`<td>${cmpCell(s.type,g,g&&g.type,s.ntype,g&&g.ntype,g?dice(s.ntype,g.ntype):0,true)}</td>`
@@ -973,12 +1112,69 @@ function renderMatch(focusSlotId){
         +`<td class="qty"><span class="n">${s.quota} ↔ ${nApp}명</span>${tag}</td>`
         +`<td>${sel}</td></tr>`;
   });
+
+  } // /고르기 모드 분기
+
+  t.classList.toggle("focus",!!focusGk);   // 열 폭 규칙을 모드별로 가른다
   t.innerHTML=html+"</tbody>";
   // summary — 필터와 무관하게 전체 슬롯 기준
+  // 어떤 객실에도 연결되지 않은 신청그룹 = 대응 객실이 없는 지망.
+  // 억지로 붙이지 않는 대신 여기서 반드시 보여준다.
+  const orphans=Object.values(STATE.groups).filter(g=>!usedGroups.has(g.key))
+        .sort((a,b)=>(a.resort<b.resort?-1:a.resort>b.resort?1:0)
+                   ||(a.in<b.in?-1:a.in>b.in?1:0)
+                   ||(a.region<b.region?-1:1));
   document.getElementById("match-summary").innerHTML=
      card("자동 매칭",cAuto,"ok")+card("수동 지정",cManual,cManual?"warn":"")
     +card("추천(검수)",cSug,cSug?"warn":"")
-    +card("미매칭",cNone,cNone?"bad":"")+card("신청없음(빈객실)",cEmpty,"");
+    +card("미매칭",cNone,cNone?"bad":"")+card("신청없음(빈객실)",cEmpty,"")
+    +card("연결 안 된 신청그룹",orphans.length,orphans.length?"warn":"");
+  const ob=document.getElementById("match-orphans");
+  ob.classList.toggle("hidden",!orphans.length);
+  if(orphans.length){
+    ob.innerHTML=`<div class="legend"><span><b>연결 안 된 신청그룹 ${orphans.length}건</b>`
+      +` — 객실 LIST에 대응 객실이 없어 어떤 객실에도 붙지 않았다.`
+      +` 칩을 누르면 그 신청을 붙일 수 있는 객실만 유사도 순으로 추려 보여준다.`
+      +` 실제로 없는 객실이면 그대로 두면 된다.</span></div>`
+      +`<div class="chips">`+orphans.map(g=>
+        `<span class="chip warn-chip pick${g.key===focusGk?" on":""}" data-gk="${esc(g.key)}"`
+        +` title="이 신청을 붙일 객실 고르기">${esc(g.resort)} · ${esc(g.region)} · ${esc(g.type)}`
+        +` · ${esc(g.in)} <b>${g.sabuns.size}명</b></span>`).join("")+`</div>`;
+    ob.querySelectorAll(".chip.pick").forEach(ch=>{
+      ch.addEventListener("click",()=>{
+        const gk=ch.getAttribute("data-gk");
+        STATE.focusGroup=(STATE.focusGroup===gk)?null:gk;   // 같은 칩 재클릭 = 해제
+        renderMatch();
+      });
+    });
+  }
+  // 고르기 모드 배너 — 무엇을 붙이는 중인지, 후보가 몇 개인지, 어떻게 빠져나가는지
+  const fb=document.getElementById("match-focus");
+  fb.classList.toggle("hidden",!focusGk);
+  if(focusGk){
+    fb.innerHTML=`<span class="who">연결할 객실 고르기 · ${esc(focusG.resort)} · ${esc(focusG.region)}`
+      +` · ${esc(focusG.type)} · ${esc(focusG.in)} (${focusG.sabuns.size}명)</span>`
+      // 안내는 후보가 0개일 때만 — 그때가 '전체보기'가 실제로 필요한 유일한 순간이다
+      +(rowNo
+        ? `<span class="hint">후보 객실 ${rowNo}개 · 유사도 높은 순</span>`
+        : showAll
+          ? `<span class="hint warn-txt">후보 객실 없음 — 이 신청과 이어질 객실이 LIST에 없습니다.</span>`
+          : `<span class="hint warn-txt">후보 객실 없음 — 위의 <b>전체 신청그룹 보기</b>를 켜면 다른 리조트·입실일 객실까지 후보에 들어갑니다.</span>`)
+      +`<button class="ghost" id="focus-clear">고르기 취소</button>`;
+    fb.querySelector("#focus-clear").addEventListener("click",()=>{
+      STATE.focusGroup=null; renderMatch();
+    });
+  }
+  // 고르기 모드 [연결] — select change 핸들러와 같은 상태 전이를 쓴다
+  t.querySelectorAll("button[data-pick]").forEach(b=>{
+    b.addEventListener("click",()=>{
+      const sid=b.getAttribute("data-pick");
+      STATE.matchMap[sid]=focusGk;
+      STATE.matchStatus[sid]="manual";   // 손으로 고른 건 '수동'으로 남긴다
+      STATE.focusGroup=null;             // 연결을 마쳤으니 일반 화면으로 복귀
+      renderMatch(sid);
+    });
+  });
   // bind selects
   t.querySelectorAll("select").forEach(se=>{
     se.addEventListener("change",e=>{
@@ -986,13 +1182,15 @@ function renderMatch(focusSlotId){
       STATE.matchMap[sid]=e.target.value||null;
       // 손으로 고른 건 '수동'으로 남긴다 — 자동 매칭과 섞이면 검수 이력이 사라진다
       STATE.matchStatus[sid]=e.target.value?"manual":"none";
+      // 고르기 모드에서 연결을 마쳤으면 일반 화면으로 돌아간다
+      if(STATE.focusGroup && e.target.value===STATE.focusGroup) STATE.focusGroup=null;
       renderMatch(sid);
     });
   });
   if(scroller) scroller.scrollTop=keepTop;
   if(focusSlotId){
     const back=t.querySelector(`select[data-slot="${CSS.escape(focusSlotId)}"]`);
-    if(back) back.focus();
+    if(back) back.focus({preventScroll:true});
   }
 }
 function card(k,v,cls){return `<div class="card"><div class="k">${k}</div><div class="v ${cls||""}">${v}</div></div>`;}
